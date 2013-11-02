@@ -6,8 +6,12 @@
 # Based on Nikos Ve's one-liner:
   # ...
 
+
 # The center cell value
-HPF_C=18
+if [ -z $2 ]
+then HPF_Center_Value=18
+else HPF_Center_Value=$2
+fi
 
 #
 Matrix_Dimension=5
@@ -26,7 +30,7 @@ Matrix_Dimension=5
 
 # create a function for the cell value
 HPF_Cell_Value(){
-  if (( "${Row}" == "${Col}" )) && (( "${Col}" == `echo "(${Matrix_Dimension} + 1 ) / 2" | bc` )) ; then echo "${HPF_C} " ; else echo "-1 " ; fi
+  if (( "${Row}" == "${Col}" )) && (( "${Col}" == `echo "(${Matrix_Dimension} + 1 ) / 2" | bc` )) ; then echo "${HPF_Center_Value} " ; else echo "-1 " ; fi
 }
 
 # construct the row for Cols 1 to N
@@ -39,8 +43,13 @@ HPF_Row(){
 
 # Put that in a loop
 HPF_Matrix(){
+  Matrix_Dimension="${1}"
+  HPF_Center_Value="${2}"
+  echo "MATRIX    ${Matrix_Dimension}"
   for Row in `seq "${Matrix_Dimension}"`
     do
       echo "$(HPF_Row)"
-done
+  done
+  echo "DIVISOR   1"
+  echo "TYPE      P"
 }
