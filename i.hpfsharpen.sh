@@ -1,11 +1,28 @@
 #!/bin/sh
 
+# Started: 29. Oct. 2013
+
 ############################################################################
 #
 # MODULE:       i.hpfsharpen
 # AUTHOR(S):    Nikos Alexandris <nik@nikosalexandris.net>
 #				Nikos Ves
-# PURPOSE:      ...
+# PURPOSE:		HPF Resolution Merge -- Algorithm Replication in GRASS GIS
+#
+# 				Function to combine high-resolution panchromatic data with
+# 				lower resolution multispectral data, resulting in an output
+# 				with both excellent detail and a realistic representation of
+# 				original multispectral scene colors.
+#
+# 				The process involves a convolution using a High Pass Filter
+# 				(HPF) on the high resolution data, then combining this with
+# 				the lower resolution multispectral data. Read the description
+# 				of the Algorithm below.
+#
+# 				Source: "Optimizing the High-Pass Filter Addition Technique for
+# 				Image Fusion", Ute G. Gangkofner, Pushkar S. Pradhan,
+# 				and Derrold W. Holcomb (2008)
+#
 # COPYRIGHT:    (C) 2013 by the GRASS Development Team
 #
 #               This program is free software under the GNU General Public
@@ -64,45 +81,58 @@
 #%end
 
 
+# Various checks -------------------------------------------------------------
+
+# inside a GRASSy environent?
 if [ -z "$GISBASE" ] ; then
-    echo "You must be in GRASS GIS to run this program." 1>&2
+    g.message -e "You must be in GRASS GIS to run this program." 1>&2
     exit 1
 fi
 
+# bc available?
+SCRIPT=`basename $0`
+if [ ! -x "`which bc`" ]
+then g.message -i "${SCRIPT}: bc required, please install it first" 2>&1
+exit 1
+fi
+
+# parsing?
 if [ "$1" != "@ARGS_PARSED@" ] ; then
     exec g.parser "$0" "$@"
 else
   g.message -w "No parameters given..."
 fi
 
-#### add your code below ####
-g.message ""
 
-# default center value
+
+# Flags requesting various parameters for the HPF Matrix and the Process -----
+echo ""
+
+# default center cell value
 if [ $GIS_FLAG_L -eq 0 ] && [ $GIS_FLAG_H -eq 0 ]
   then g.message "Using a default center value"
   Center_Level="Default"
 fi
 
-# l
+# l - low center cell value
 if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 0 ]
   then g.message -i "Using a Low center value"
   Center_Level="Low"
 else g.message "Flag -l not set"
 fi
 
-# h 
+# h - high center cell value
 if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_L -eq 0 ]
   then g.message -i "Using a High center value"
   Center_Level="High"
 else g.message "Flag -h not set"
 fi
 
-# conflicting flags?
-if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
-  then g.message -e "Requested both a Low and a High center value for the filter! Please, instruct only one of them."
-  exit 1
-fi
+  # conflicting flags?
+  if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
+	then g.message -e "Requested both a Low and a High center value for the filter! Please, instruct only one of them."
+	exit 1
+  fi
 
 # default modulating factor
 if [ $GIS_FLAG_I -eq 0 ] && [ $GIS_FLAG_A -eq 0 ]
@@ -110,27 +140,27 @@ if [ $GIS_FLAG_I -eq 0 ] && [ $GIS_FLAG_A -eq 0 ]
   Modulator_Level="Default"
 fi
 
-# i
+# i - minimum modulating factor
 if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 0 ]
   then g.message -i "Using the Minimum modulating factor"
 	Modulator_Level="Min"
   else g.message "Flag -i not set"
 fi
 
-# ma
+# a - maximum modulating factor
 if [ $GIS_FLAG_A -eq 1 ] && [ $GIS_FLAG_I -eq 0 ]
   then g.message -i "Using the Maximum modulating factor"
 	Modulator_Level="Max"
   else g.message "Flag -a not set"
 fi
 
-# conflicting flags?
-if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 1 ]
-  then g.message -e "Requested both a Min and a Max modulating factor for the weighting process! Please, instruct only one of them."
-  exit 1
-fi
+  # conflicting flags?
+  if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 1 ]
+	then g.message -e "Requested both a Min and a Max modulating factor for the weighting process! Please, instruct only one of them."
+	exit 1
+  fi
 
-# 2
+# 2-pass process for large ratios
 if [ $GIS_FLAG_2 -eq 1 ]
   then g.message -i "Performing a 2-pass processing"
 
@@ -178,29 +208,31 @@ if [ $GIS_FLAG_2 -eq 1 ]
 fi
 
 
+# What was requested? ----------------------------------------------------------
 
-# The requested paramters
+# Flags/Parameters
+echo ""
 g.message -i "The requested parameters:"
-g.message -i "* Center_Level: ${Center_Level}"
-g.message -i "* Modulator_Level: ${Modulator_Level}"
+g.message -i "* Center Cell Level: ${Center_Level}"
+g.message -i "* Modulating Factor Level: ${Modulator_Level}"
 
 if [ $GIS_FLAG_2 -eq 1 ]
-  then g.message -i "* Modulator_Level_2: ${Modulator_Level_2}"
+  then g.message -i "* Modulating Factor Level_2: ${Modulator_Level_2}"
 fi
 
 
+# Input Images
+echo ""
 
-#
-g.message "The input high resolution Panchromatic image: ${GIS_OPT_PAN}"
-
-# check if panchromatic image exists
+# check if input panchromatic image exists
 eval `g.findfile element=cell file="${GIS_OPT_PAN}"`
 if [ -z "$name" ]
   then g.message -e "image <${GIS_OPT_PAN}> not found."
+  else g.message "The input high resolution Panchromatic image: ${GIS_OPT_PAN}"
   exit 1
 fi
 
-#
+# check if input multi-spectral image exists
 IFS=,
 for Image in $GIS_OPT_MSX
   do
@@ -213,8 +245,277 @@ for Image in $GIS_OPT_MSX
 	g.message "The input low resolution Multi-Spectral image: ${Image}"
 done
 
-# one more check -- necessary?
-if [ "${GIS_OPT_PAN}" = "${Image}" ]
-  then g.message "Input elevation map and output roughness map must have different names"
-  exit 1
+
+
+# Implementation in GRASS GIS ################################################
+
+#
+# 1. Read pixel sizes from Image files and calculate R, the ratio of
+# multispectral cell size to high-resolution cell size
+# ----------------------------------------------------------------------------
+
+eval `r.info ${MS_IMAGE} -g | grep res`
+eval `r.info ${PAN_IMAGE} -g | grep res`
+
+if [ ${nsres} == ${ewres} ]
+then eval MS_RESOLUTION="${nsres}"
+RATIO=$( echo "${MS_RESOLUTION} / ${PAN_RESOLUTION}" | bc )
+else g.message "North-South and East-West Resolutions do not match!"
 fi
+
+
+
+#
+# 2. Apply the High-pass filter to the high spatial resolution image.
+# ----------------------------------------------------------------------------
+
+# # Use alternative level for the Filter's Center Cell Value?
+# echo "Do you wish to use an alternative level for the High Pass Filter's center Cell value?"
+# select yn in "Yes" "No"; do
+#   case $yn in
+# 	Yes ) select lh in "Low" "High"; do
+# 	  case $lh in 
+# 		Low ) Center_CellENTER_VALUE_LEVEL="LOW"
+# 		High ) Center_CellENTER_VALUE_LEVEL="HIGH"
+# 	  esac
+# 	No ) exit;;
+#   esac
+# done
+
+# Matrix Constructor Function -- Use as "HPF_MATRIX"
+source HPF_Matrix_Constructor_Function.sh
+
+# HPF Kernel Size, Center Value and Some Modulation Factor depend on RATIO
+
+# 1 < RATIO < 2.5 then 5x5
+if
+[[ $( echo "1 < ${RATIO}" | bc ) -eq 1 ]] && \
+  [[ $( echo "${RATIO} < 2.5" | bc ) -eq 1 ]]
+
+  then
+  
+  # kernel size
+  Kernel_Size=5
+  
+  # potential center values
+  Center_Default=24	;	Center_Low=28	;	Center_High=32
+  
+  # setting center value
+  eval Center_Cell="Center_${Center_Level}"
+  
+  # modulation Factor
+  Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
+  
+  # setting modulation value
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${HPF_Center_Cell}
+  
+  # Default will be:
+  
+  #   HPF_MATRIX=\
+	# "MATRIX    5
+  # -1 -1 -1 -1 -1
+  # -1 -1 -1 -1 -1
+  # -1 -1 $(echo ${Center_Cell}) -1 -1
+  # -1 -1 -1 -1 -1
+  # -1 -1 -1 -1 -1
+  # DIVISOR   1
+  # TYPE      P"
+  
+  fi
+  
+  # 2.5 <= RATIO < 3.5 then 7x7
+  if
+  
+  [[ $( echo "2.5 < ${RATIO}" | bc ) -eq 1 ]] && \
+	[[ $( echo "${RATIO} < 3.5" | bc ) -eq 1 ]]
+  then
+  
+  # kernel size
+  Kernel_Size=7 #&& echo ${Kernel_Size}
+  
+  # center values
+  Center_Default=48	;	Center_Low=56	;	Center_High=64
+  
+  # modulation factor
+  Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
+  
+  fi
+  
+  # 3.5 <= RATIO < 5.5 then 9x9
+  if
+  
+  [[ $( echo "3.5 < ${RATIO}" | bc ) -eq 1 ]] && \
+	[[ $( echo "${RATIO} < 5.5" | bc ) -eq 1 ]]
+  then
+  
+  # kernel size
+  Kernel_Size=9 #&& echo ${Kernel_Size}
+  
+  # center values 
+  Center_Default=80	;	Center_Low=96	;	Center_High=106
+  
+  # modulation factor
+  Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
+  
+  fi
+  
+  # 5.5 <= RATIO < 7.5 then 11x11
+  if
+  
+  [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]] && \
+	[[ $( echo "${RATIO} < 7.5" | bc ) -eq 1 ]]
+  then
+  
+  # kernel size
+  Kernel_Size=11 #&& echo ${Kernel_Size}
+  
+  # center values
+  Center_Default=120 ; Center_Low=150 ; Center_High=180
+  
+  # modulation factor
+  Modulator_Min=1.0 ; Modulator_Default=0.65 ; Modulator_Max=0.50
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
+  
+  fi
+  
+  # 7.5 <= RATIO < 9.5 then 13x13
+  if
+  
+  [[ $( echo "7.5 < ${RATIO}" | bc ) -eq 1 ]] && \
+	[[ $( echo "${RATIO} < 9.5" | bc ) -eq 1 ]]
+  then
+  
+  # kernel size
+  Kernel_Size=13 #&& echo ${Kernel_Size}
+  
+  # center values
+  Center_Default=168	;	Center_Low=210	;	Center_High=252
+  
+  # modulation factor
+  Modulator_Min=1.4 ; Modulator_Default=1.0 ; Modulator_Max=0.65
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
+  
+  fi
+  
+  # RATIO >= 9.5 then 15x15
+  if
+  
+  [[ $( echo "9.5 <= ${RATIO}" | bc ) -eq 1 ]]
+  then
+  
+  # kernel size
+  Kernel_Size=15 #&& echo ${Kernel_Size}
+  
+  # center values
+  Center_Default=336	;	Center_Low=392	;	Center_High=448
+  
+  # modulation factor
+  Modulator_Min=2.0 ; Modulator_Default=1.35 ; Modulator_Max=1.0
+  
+  # the Matrix
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
+  
+  fi
+  
+  # create filter ASCII file
+  echo "${HPF_MATRIX}" > HPF_FILE_${Kernel_Size}
+  g.message "High Pass Filter created with the following parameters:"
+  g.message "Kernel Size: ${Kernel_Size}; Center Value: ${Center_Cell}; Modulating Factor: ${Modulating_Factor}"
+  
+  # create a temp file
+  Temporary_HPF=`g.tempfile pid=$$`
+  if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ] ; then
+  g.message -e "unable to create temporary files"
+  exit 1
+  fi
+  
+  # apply filter
+  r.mfilter.fp \
+	input="${PAN_IMAGE}" \
+	  filter="HPF_FILE_${Kernel_Size}" \
+		output="${Temporary_HPF}" \
+		  title="High Pass Filtered Panchromatic Image"
+		
+		
+		
+		#
+		# 3. Resample the Multi-Spectral image to the pixel size of the high-pass image.
+		# Note, bilinear resampling required (4 nearest neighbours)!
+		# ----------------------------------------------------------------------------
+		
+		# create a temp file
+		Temporary_MSBLNR=`g.tempfile pid=$$`
+		if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ] ; then
+		g.message -e "unable to create temporary files"
+		exit 1
+		fi
+		
+		# resample
+		r.resamp.interp \
+		  method="bilinear" \
+			input=${MS_IMAGE} \
+			  output=${Temporary_MSBLNR}
+			
+			
+			#
+			# 4. Add the HPF image weighted relative to the global standard deviation of
+			# the Multi-Spectral band.
+			# ----------------------------------------------------------------------------
+			
+			# The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
+			# where:
+			# SD(MS) and SD(HPF) are the Standard Deviations of the MS and HPF images
+			# M is a Modulator value
+			
+			# get Standard Deviations of Multi-Spectral Image(s) *and* the HPF Image
+			eval MS_STDDEV=`r.univar ${MS_IMAGE} -g | grep stddev`
+			eval HPF_STDDEV=`r.univar ${Temporary_HPF} -g | grep stddev`
+			
+			# compute weighting
+			Weighting=$( echo "( ${MS_STDDEV} / ${HPF_STDDEV} * ${!Modulating_Factor} )" | bc )
+			
+			# create temporary file
+			Temporary_MSHPF=`g.tempfile pid=$$`
+			if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ] ; then
+			g.message -e "unable to create temporary files"
+			exit 1
+			fi
+			
+			# Add weighted HPF image to the bilinearly resampled Multi-Spectral band
+			r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * ${Weighting}"
+			
+			
+			
+			
+			#
+			# 5. Stretch linearly the new HPF-Sharpened image to match the mean and
+			# standard deviation of the input Multi-Sectral image.
+			# ----------------------------------------------------------------------------
+			
+			# which module of formula?
+			input=${Temporary_MSHPF} \
+			  output=MS_HPF_Sharpened \
+				
+
+
+#
+# Clean up
+#
+
+# Remove temporary files
+g.remove ${Temporary_HPF}
+g.remove ${Temporary_MSBLNR}
+g.remove ${Temporary_MSHPF}
