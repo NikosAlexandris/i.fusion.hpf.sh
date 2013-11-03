@@ -1,12 +1,23 @@
 #!/bin/bash
 # 29. Oct. 2013
 
+# Source: ERDAS Documentation
 
-# check command line parameters
-if [ -z "${2}" ] ;
-then
-echo "Name the Panchromatic and the three Multi-Spectral Images to be merged"
-echo "Usage: $0 [Panchromatic Multi-Spectral(1) Multi-Spectral(2) Multi-Spectral(3)] "
+SCRIPT=`basename $0`
+
+# # check command line parameters
+# if [ -z "${2}" ] ;
+# then
+# g.message "Name the Panchromatic and the three Multi-Spectral Images to be merged"
+# g.message "Usage: $0 [Panchromatic Multi-Spectral(1) Multi-Spectral(2) Multi-Spectral(3)] "
+# exit 1
+# fi
+
+#
+# check if we have bc
+#
+if [ ! -x "`which bc`" ]
+then echo "${SCRIPT}: bc required, please install it first" 2>&1
 exit 1
 fi
 
@@ -37,6 +48,7 @@ MS_IMAGE_2=${4}
 ##############################################################################
 
 
+
 # The general algorithm is:
 
 #
@@ -50,54 +62,69 @@ eval `r.info ${PAN_IMAGE} -g | grep res`
 if [ ${nsres} == ${ewres} ]
   then eval MS_RESOLUTION="${nsres}"
   RATIO=$( echo "${MS_RESOLUTION} / ${PAN_RESOLUTION}" | bc )
-  else echo "North-South and East-West Resolutions do not match!"
+  else g.message "North-South and East-West Resolutions do not match!"
+fi
+
 
 
 #
 # 2. Apply the High-pass filter to the high spatial resolution image.
 # ----------------------------------------------------------------------------
 
-# related module: r.mfilter
+# # Use alternative level for the Filter's Center Cell Value?
+# echo "Do you wish to use an alternative level for the High Pass Filter's center Cell value?"
+# select yn in "Yes" "No"; do
+#   case $yn in
+# 	Yes ) select lh in "Low" "High"; do
+# 	  case $lh in 
+# 		Low ) Center_CellENTER_VALUE_LEVEL="LOW"
+# 		High ) Center_CellENTER_VALUE_LEVEL="HIGH"
+# 	  esac
+# 	No ) exit;;
+#   esac
+# done
 
-# Required Parameters/Variables/Constants
+# Matrix Constructor Function -- Use as "HPF_MATRIX"
+source HPF_Matrix_Constructor_Function.sh
 
-# here some "default" values
-HPF_KERNEL_SIZE=5
-HPF_CENTER_VALUE=24
-HPF_CENTER_VALUES_OPTIONAL_LOW=28
-HPF_CENTER_VALUES_OPTIONAL_HIGH=32
-
-
-
-
-
-# if RATIO is... then set kernel size NxN ####################################
+# HPF Kernel Size, Center Value and Some Modulation Factor depend on RATIO
 
 # 1 < RATIO < 2.5 then 5x5
 if
   [[ $( echo "1 < ${RATIO}" | bc ) -eq 1 ]] && \
   [[ $( echo "${RATIO} < 2.5" | bc ) -eq 1 ]]
+
   then
+  
+	# kernel size
+	Kernel_Size=5
 
-	HPF_KERNEL_SIZE=5 #&& echo ${HPF_KERNEL_SIZE}
-
-	# center values
-# 	HPF_CENTER_VALUE=24
-# 	eval HPF_C="${HPF_CENTER_VALUE}"
-	HPF_C=24
-	HPF_CENTER_VALUES_OPTIONAL_LOW=28
-	HPF_CENTER_VALUES_OPTIONAL_HIGH=32
-
+	# potential center values
+	Center_Default=24	;	Center_Low=28	;	Center_High=32
+	
+	# setting center value
+	eval Center_Cell="Center_${Center_Level}"
+	
+	# modulation Factor
+	Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
+	
+	# setting modulation value
+	eval Modulating_Factor="Modulator_${Modulating_Level}"
+	
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    5
--1 -1 -1 -1 -1
--1 -1 -1 -1 -1
--1 -1 $(echo ${HPF_C}) -1 -1
--1 -1 -1 -1 -1
--1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${HPF_Center_Cell}
+
+	# Default will be:
+
+	#   HPF_MATRIX=\
+	# "MATRIX    5
+	# -1 -1 -1 -1 -1
+	# -1 -1 -1 -1 -1
+	# -1 -1 $(echo ${Center_Cell}) -1 -1
+	# -1 -1 -1 -1 -1
+	# -1 -1 -1 -1 -1
+	# DIVISOR   1
+	# TYPE      P"
 
 fi
 
@@ -107,25 +134,18 @@ if
   [[ $( echo "2.5 < ${RATIO}" | bc ) -eq 1 ]] && \
   [[ $( echo "${RATIO} < 3.5" | bc ) -eq 1 ]]
   then
-  HPF_KERNEL_SIZE=7 #&& echo ${HPF_KERNEL_SIZE}
   
-  # center values
-  HPF_C=48
-  HPF_CENTER_VALUES_OPTIONAL_LOW=56
-  HPF_CENTER_VALUES_OPTIONAL_HIGH=64
+	# kernel size
+	Kernel_Size=7 #&& echo ${Kernel_Size}
+	
+	# center values
+	Center_Default=48	;	Center_Low=56	;	Center_High=64
+	
+	# modulation factor
+	Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
 
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    7
--1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1
--1 -1 -1 $(echo ${HPF_C}) -1 -1 -1
--1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
 
 fi
 
@@ -135,34 +155,19 @@ if
   [[ $( echo "3.5 < ${RATIO}" | bc ) -eq 1 ]] && \
   [[ $( echo "${RATIO} < 5.5" | bc ) -eq 1 ]]
   then
-  HPF_KERNEL_SIZE=9 #&& echo ${HPF_KERNEL_SIZE}
+  
+	# kernel size
+	Kernel_Size=9 #&& echo ${Kernel_Size}
 
-  # center values 
-  HPF_C=80
-  HPF_CENTER_VALUES_OPTIONAL_LOW=96
-  HPF_CENTER_VALUES_OPTIONAL_HIGH=106
+	# center values 
+	Center_Default=80	;	Center_Low=96	;	Center_High=106
+	
+	# modulation factor
+	Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
 
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    9
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 $(echo ${HPF_C}) -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
 
-#
-# Replace above matrix with:
-# for row in $(seq $DIM)  ;  do  echo $(for col in $(seq $DIM)  ;  do if [ $row -eq $col ] && [ $row == $(echo "$DIM/2+1" | bc) ]; then echo " yaw"  ;  else echo -n " -1" ; fi  ;  done)  ;  done
-#
-# implemented by Nikos Ves :-)
-#
 fi
 
 # 5.5 <= RATIO < 7.5 then 11x11
@@ -171,29 +176,18 @@ if
   [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]] && \
   [[ $( echo "${RATIO} < 7.5" | bc ) -eq 1 ]]
   then
-  HPF_KERNEL_SIZE=11 #&& echo ${HPF_KERNEL_SIZE}
+  
+	# kernel size
+	Kernel_Size=11 #&& echo ${Kernel_Size}
 
-  # center values
-  HPF_C=120
-  HPF_CENTER_VALUES_OPTIONAL_LOW=150
-  HPF_CENTER_VALUES_OPTIONAL_HIGH=180
+	# center values
+	Center_Default=120 ; Center_Low=150 ; Center_High=180
+	
+	# modulation factor
+	Modulator_Min=1.0 ; Modulator_Default=0.65 ; Modulator_Max=0.50
 
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    11
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 $(echo ${HPF_C}) -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
 
 fi
 
@@ -203,142 +197,127 @@ if
   [[ $( echo "7.5 < ${RATIO}" | bc ) -eq 1 ]] && \
   [[ $( echo "${RATIO} < 9.5" | bc ) -eq 1 ]]
   then
-  HPF_KERNEL_SIZE=13 #&& echo ${HPF_KERNEL_SIZE}
   
-  # center values
-  HPF_C=168
-  HPF_CENTER_VALUES_OPTIONAL_LOW=210
-  HPF_CENTER_VALUES_OPTIONAL_HIGH=252
+	# kernel size
+	Kernel_Size=13 #&& echo ${Kernel_Size}
+  
+	# center values
+	Center_Default=168	;	Center_Low=210	;	Center_High=252
+
+	# modulation factor
+	Modulator_Min=1.4 ; Modulator_Default=1.0 ; Modulator_Max=0.65
 
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    13
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 $(echo ${HPF_C}) -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
 
 fi
-
 
 # RATIO >= 9.5 then 15x15
 if
 
   [[ $( echo "9.5 <= ${RATIO}" | bc ) -eq 1 ]]
   then
-  HPF_KERNEL_SIZE=15 #&& echo ${HPF_KERNEL_SIZE}
+  
+	# kernel size
+	Kernel_Size=15 #&& echo ${Kernel_Size}
 
-  # center values
-  HPF_C=336
-  HPF_CENTER_VALUES_OPTIONAL_LOW=392
-  HPF_CENTER_VALUES_OPTIONAL_HIGH=448
+	# center values
+	Center_Default=336	;	Center_Low=392	;	Center_High=448
+	
+	# modulation factor
+	Modulator_Min=2.0 ; Modulator_Default=1.35 ; Modulator_Max=1.0
 
   # the Matrix
-  HPF_MATRIX=\
-"MATRIX    15
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 $(echo ${HPF_C}) -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
--1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
-DIVISOR   1
-TYPE      P"
+  HPF_Matrix ${Kernel_Size} ${Center_Cell}
 
 fi
 
-  # create filter
-  echo "${HPF_MATRIX}" > HPF_FILE_${HPF_KERNEL_SIZE}
+# create filter ASCII file
+echo "${HPF_MATRIX}" > HPF_FILE_${Kernel_Size}
+g.message "High Pass Filter created with the following parameters:"
+g.message "Kernel Size: ${Kernel_Size}; Center Value: ${Center_Cell}; Modulating Factor: ${Modulating_Factor}"
 
-  # apply filter
-  r.mfilter.fp \
-  input=${PAN_IMAGE} \
-  filter= \
-  output=${PAN_IMAGE}_HPF \
-  title="High Pass Filtered Panchromatic Image"
+# create a temp file
+Temporary_HPF=`g.tempfile pid=$$`
+if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ] ; then
+g.message -e "unable to create temporary files"
+exit 1
+fi
+	
+# apply filter
+r.mfilter.fp \
+input="${PAN_IMAGE}" \
+filter="HPF_FILE_${Kernel_Size}" \
+output="${Temporary_HPF}" \
+title="High Pass Filtered Panchromatic Image"
 
 
 
 #
-# 3. Resample the multispectral image to the pixel size of the high-pass image.
+# 3. Resample the Multi-Spectral image to the pixel size of the high-pass image.
 # Note, bilinear resampling required (4 nearest neighbours)!
 # ----------------------------------------------------------------------------
 
-# related module(s):
+# create a temp file
+Temporary_MSBLNR=`g.tempfile pid=$$`
+if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ] ; then
+g.message -e "unable to create temporary files"
+exit 1
+fi
 
+# resample
+r.resamp.interp \
+  method="bilinear" \
+  input=${MS_IMAGE} \
+  output=${Temporary_MSBLNR}
 
 
 #
-# 4. The HPF image is weighted relative to the global standard deviation of
-# the multispectral band.
+# 4. Add the HPF image weighted relative to the global standard deviation of
+# the Multi-Spectral band.
 # ----------------------------------------------------------------------------
 
-# The weighting formula is: W = (SD(MS) / SD(HPF) x M)
+# The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
   # where:
-	# W is...
-	# SD(Ms)
-	# SD(HPF)
-	# M is a Modulator value...
-
-# Fix Here!
-MODULATION_FACTOR=DEFAULT
-
-# if 1 < ${RATIO} < 2.5
-then
-MODULATOR_MIN=0.3 ; MODULATOR_DEFAULT=0.25 ; MODULATOR_MAX=0.20
-
-# 2.5 <= ${RATIO} <3.5
-MODULATOR_MIN=0.65 ; MODULATOR_DEFAULT=0.50 ; MODULATOR_MAX=0.35
-
-# 3.5 <= ${RATIO} <5.5
-MODULATOR_MIN=0.65 ; MODULATOR_DEFAULT=0.50 ; MODULATOR_MAX=0.35
-
-# 5.5 <= ${RATIO} <7.5
-MODULATOR_MIN=1.0 ; MODULATOR_DEFAULT=0.65 ; MODULATOR_MAX=0.50
-
-# 7.5 <= ${RATIO} <9.5
-MODULATOR_MIN=1.4 ; MODULATOR_DEFAULT=1.0 ; MODULATOR_MAX=0.65
-
-# ${RATIO} >=9.5
-MODULATOR_MIN=2.0 ; MODULATOR_DEFAULT=1.35 ; MODULATOR_MAX=1.0
-
-# Fix Here!
-eval MODULATOR=MODULATOR_${MODULATION_FACTOR}
-
-WEIGTHING =$( echo "( ${MS_STDDEV} / ${HPF_STDDEV} * ${MODULATOR} )" | bc )
-
+	# SD(MS) and SD(HPF) are the Standard Deviations of the MS and HPF images
+	# M is a Modulator value
 
 # get Standard Deviations of Multi-Spectral Image(s) *and* the HPF Image
 eval MS_STDDEV=`r.univar ${MS_IMAGE} -g | grep stddev`
-eval HPF_STDDEV=`r.univar ${PAN_IMAGE}_HPF -g | grep stddev`
+eval HPF_STDDEV=`r.univar ${Temporary_HPF} -g | grep stddev`
+
+# compute weighting
+Weighting=$( echo "( ${MS_STDDEV} / ${HPF_STDDEV} * ${!Modulating_Factor} )" | bc )
+
+# create temporary file
+Temporary_MSHPF=`g.tempfile pid=$$`
+if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ] ; then
+g.message -e "unable to create temporary files"
+exit 1
+fi
+
+# Add weighted HPF image to the bilinearly resampled Multi-Spectral band
+r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * ${Weighting}"
+
+
+
 
 #
-# 5. Add the HPF image to each multispectral band.
-#  ----------------------------------------------------------------------------
-
-r.mapcalc "Pixel_Out = Pixel_In + ${PAN_IMAGE}_HPF * ${WEIGTHING}"
-
-#
-# 6. Stretch the new multispectral image to match the mean and standard
-# deviation of the original (input) multispectral image.
+# 5. Stretch linearly the new HPF-Sharpened image to match the mean and
+# standard deviation of the input Multi-Sectral image.
 # ----------------------------------------------------------------------------
+
+# which module of formula?
+input=${Temporary_MSHPF} \
+output=MS_HPF_Sharpened \
+
+
+
+#
+# Clean up
+#
+
+# Remove temporary files
+g.remove ${Temporary_HPF}
+g.remove ${Temporary_MSBLNR}
+g.remove ${Temporary_MSHPF}
