@@ -67,14 +67,14 @@
 #%option
 #% key: pan
 #% type: string
-#% gisprompt: old,cell,raster
+#% gisprompt: old,double,raster
 #% description: High resolution Panchromatic image for sharpening multi-spectral image
 #% required : yes
 #%end
 #%option
 #% key: msx
 #% type: string
-#% gisprompt: old,cell,raster
+#% gisprompt: old,double,raster
 #% description: Multi-Spectral image(s) to be pan-sharpened
 #% required : yes
 #% multiple : yes
@@ -128,8 +128,8 @@ if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_L -eq 0 ]
 else g.message "Flag -h not set"
 fi
 
-  # conflicting flags?
-  if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
+	# conflicting flags?
+	if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
 	then g.message -e "Requested both a Low and a High center value for the filter! Please, instruct only one of them."
 	exit 1
   fi
@@ -154,8 +154,8 @@ if [ $GIS_FLAG_A -eq 1 ] && [ $GIS_FLAG_I -eq 0 ]
   else g.message "Flag -a not set"
 fi
 
-  # conflicting flags?
-  if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 1 ]
+	# conflicting flags?
+	if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 1 ]
 	then g.message -e "Requested both a Min and a Max modulating factor for the weighting process! Please, instruct only one of them."
 	exit 1
   fi
@@ -177,7 +177,6 @@ if [ $GIS_FLAG_2 -eq 1 ]
 	  else g.message "Flag -I not set"
 	fi
 
-
 	# x
 	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
 	  then g.message -i "Using the Maximum modulating factor for the 2-pass process"
@@ -185,8 +184,8 @@ if [ $GIS_FLAG_2 -eq 1 ]
 	  else g.message "Flag -A not set"
 	fi
 
-	# conflicting flags?
-	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 1 ]
+		# conflicting flags?
+		if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 1 ]
 	  then g.message -e "Requested both a Min and a Max modulating factor for the 2-pass weighting process! Please, instruct only one of them."
 	  exit 1
 	fi
@@ -197,7 +196,6 @@ if [ $GIS_FLAG_2 -eq 1 ]
 	then g.message -i "Please request the 2-pass process by instructing the -2 flag!"
 	exit 1
 	fi
-	
 	
 	# x
 	if [ $GIS_FLAG_2 -eq 0 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
@@ -254,13 +252,13 @@ done
 # multispectral cell size to high-resolution cell size
 # ----------------------------------------------------------------------------
 
-eval `r.info ${MS_IMAGE} -g | grep res`
-eval `r.info ${PAN_IMAGE} -g | grep res`
+eval `r.info ${GIS_OPT_PAN} -g | grep res`
+eval `r.info ${GIS_OPT_MSX} -g | grep res`
 
 if [ ${nsres} == ${ewres} ]
-then eval MS_RESOLUTION="${nsres}"
-RATIO=$( echo "${MS_RESOLUTION} / ${PAN_RESOLUTION}" | bc )
-else g.message "North-South and East-West Resolutions do not match!"
+  then eval MS_RESOLUTION="${nsres}"
+	RATIO=$( echo "${MS_RESOLUTION} / ${PAN_RESOLUTION}" | bc )
+  else g.message "North-South and East-West Resolutions do not match!"
 fi
 
 
@@ -269,246 +267,272 @@ fi
 # 2. Apply the High-pass filter to the high spatial resolution image.
 # ----------------------------------------------------------------------------
 
-# # Use alternative level for the Filter's Center Cell Value?
-# echo "Do you wish to use an alternative level for the High Pass Filter's center Cell value?"
-# select yn in "Yes" "No"; do
-#   case $yn in
-# 	Yes ) select lh in "Low" "High"; do
-# 	  case $lh in 
-# 		Low ) Center_CellENTER_VALUE_LEVEL="LOW"
-# 		High ) Center_CellENTER_VALUE_LEVEL="HIGH"
-# 	  esac
-# 	No ) exit;;
-#   esac
-# done
+# a High Pass Filter Matrix (of Matrix_Dimension^2) Constructor Function
+HPF_Matrix(){
 
-# Matrix Constructor Function -- Use as "HPF_MATRIX"
-source HPF_Matrix_Constructor_Function.sh
+  # Define the cell value(s)
+  HPF_Cell_Value(){
+	if (( "${Row}" == "${Col}" )) && (( "${Col}" == `echo "(${Matrix_Dimension} + 1 ) / 2" | bc` ))
+	then echo "${HPF_Center_Value} "
+	else echo "-1 " ; fi
+	}
 
-# HPF Kernel Size, Center Value and Some Modulation Factor depend on RATIO
+  # Construct the Row for Cols 1 to "Matrix_Dimension"
+  HPF_Row(){
+	for Col in `seq ${Matrix_Dimension}`
+	do
+	echo -n "$(HPF_Cell_Value)"
+	done
+	}
 
-# 1 < RATIO < 2.5 then 5x5
-if
-[[ $( echo "1 < ${RATIO}" | bc ) -eq 1 ]] && \
-  [[ $( echo "${RATIO} < 2.5" | bc ) -eq 1 ]]
+  # Construct the Matrix
+  Matrix_Dimension="${1}"
+  HPF_Center_Value="${2}"
+  echo "MATRIX    ${Matrix_Dimension}"
+  for Row in `seq "${Matrix_Dimension}"`
+	do
+	  echo "$(HPF_Row)"
+	done
+  echo "DIVISOR   1"
+  echo "TYPE      P"
+  }
+
+# Kernel Size, Center Value & Some Modulation Factor depend on Resolution Ratio
+
+  # 1 < RATIO < 2.5 then 5x5
+  if
+  [[ $( echo "1 < ${RATIO}" | bc ) -eq 1 ]] && \
+	[[ $( echo "${RATIO} < 2.5" | bc ) -eq 1 ]]
 
   then
-  
+
   # kernel size
   Kernel_Size=5
-  
+
   # potential center values
   Center_Default=24	;	Center_Low=28	;	Center_High=32
-  
   # setting center value
   eval Center_Cell="Center_${Center_Level}"
-  
+
   # modulation Factor
   Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
-  
+
   # setting modulation value
   eval Modulating_Factor="Modulator_${Modulating_Level}"
-  
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${HPF_Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   # Default will be:
-  
-  #   HPF_MATRIX=\
-	# "MATRIX    5
-  # -1 -1 -1 -1 -1
-  # -1 -1 -1 -1 -1
-  # -1 -1 $(echo ${Center_Cell}) -1 -1
-  # -1 -1 -1 -1 -1
-  # -1 -1 -1 -1 -1
-  # DIVISOR   1
-  # TYPE      P"
-  
+					  #   HPF_MATRIX=\
+					  # "MATRIX    5
+					  # -1 -1 -1 -1 -1
+					  # -1 -1 -1 -1 -1
+					  # -1 -1 $(echo ${Center_Cell}) -1 -1
+					  # -1 -1 -1 -1 -1
+					  # -1 -1 -1 -1 -1
+					  # DIVISOR   1
+					  # TYPE      P"
+
   fi
-  
+
   # 2.5 <= RATIO < 3.5 then 7x7
   if
-  
+
   [[ $( echo "2.5 < ${RATIO}" | bc ) -eq 1 ]] && \
 	[[ $( echo "${RATIO} < 3.5" | bc ) -eq 1 ]]
   then
-  
+
   # kernel size
   Kernel_Size=7 #&& echo ${Kernel_Size}
-  
+
   # center values
   Center_Default=48	;	Center_Low=56	;	Center_High=64
-  
+  eval Center_Cell="Center_${Center_Level}"
+
   # modulation factor
   Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
-  
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   fi
-  
+
   # 3.5 <= RATIO < 5.5 then 9x9
   if
-  
+
   [[ $( echo "3.5 < ${RATIO}" | bc ) -eq 1 ]] && \
 	[[ $( echo "${RATIO} < 5.5" | bc ) -eq 1 ]]
   then
-  
+
   # kernel size
   Kernel_Size=9 #&& echo ${Kernel_Size}
-  
+
   # center values 
   Center_Default=80	;	Center_Low=96	;	Center_High=106
-  
+  eval Center_Cell="Center_${Center_Level}"
+
   # modulation factor
   Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
-  
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   fi
-  
+
   # 5.5 <= RATIO < 7.5 then 11x11
   if
-  
+
   [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]] && \
 	[[ $( echo "${RATIO} < 7.5" | bc ) -eq 1 ]]
   then
-  
+
   # kernel size
   Kernel_Size=11 #&& echo ${Kernel_Size}
-  
+
   # center values
   Center_Default=120 ; Center_Low=150 ; Center_High=180
-  
+  eval Center_Cell="Center_${Center_Level}"
+
   # modulation factor
   Modulator_Min=1.0 ; Modulator_Default=0.65 ; Modulator_Max=0.50
-  
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   fi
-  
+
   # 7.5 <= RATIO < 9.5 then 13x13
   if
-  
+
   [[ $( echo "7.5 < ${RATIO}" | bc ) -eq 1 ]] && \
 	[[ $( echo "${RATIO} < 9.5" | bc ) -eq 1 ]]
   then
-  
+
   # kernel size
   Kernel_Size=13 #&& echo ${Kernel_Size}
-  
+
   # center values
   Center_Default=168	;	Center_Low=210	;	Center_High=252
-  
+  eval Center_Cell="Center_${Center_Level}"
+
   # modulation factor
   Modulator_Min=1.4 ; Modulator_Default=1.0 ; Modulator_Max=0.65
-  
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   fi
-  
+
   # RATIO >= 9.5 then 15x15
   if
-  
+
   [[ $( echo "9.5 <= ${RATIO}" | bc ) -eq 1 ]]
   then
-  
+
   # kernel size
   Kernel_Size=15 #&& echo ${Kernel_Size}
-  
+
   # center values
   Center_Default=336	;	Center_Low=392	;	Center_High=448
-  
+  eval Center_Cell="Center_${Center_Level}"
+
   # modulation factor
   Modulator_Min=2.0 ; Modulator_Default=1.35 ; Modulator_Max=1.0
-  
+  eval Modulating_Factor="Modulator_${Modulating_Level}"
+
   # the Matrix
-  HPF_Matrix ${Kernel_Size} ${Center_Cell}
-  
+  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+
   fi
-  
+
   # create filter ASCII file
   echo "${HPF_MATRIX}" > HPF_FILE_${Kernel_Size}
+  
+  ### ADD Additional Checks ###
+  
   g.message "High Pass Filter created with the following parameters:"
   g.message "Kernel Size: ${Kernel_Size}; Center Value: ${Center_Cell}; Modulating Factor: ${Modulating_Factor}"
-  
+
   # create a temp file
   Temporary_HPF=`g.tempfile pid=$$`
   if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ] ; then
   g.message -e "unable to create temporary files"
   exit 1
   fi
-  
+
   # apply filter
   r.mfilter.fp \
-	input="${PAN_IMAGE}" \
-	  filter="HPF_FILE_${Kernel_Size}" \
-		output="${Temporary_HPF}" \
-		  title="High Pass Filtered Panchromatic Image"
-		
-		
-		
-		#
-		# 3. Resample the Multi-Spectral image to the pixel size of the high-pass image.
-		# Note, bilinear resampling required (4 nearest neighbours)!
-		# ----------------------------------------------------------------------------
-		
-		# create a temp file
-		Temporary_MSBLNR=`g.tempfile pid=$$`
-		if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ] ; then
-		g.message -e "unable to create temporary files"
-		exit 1
-		fi
-		
-		# resample
-		r.resamp.interp \
-		  method="bilinear" \
-			input=${MS_IMAGE} \
-			  output=${Temporary_MSBLNR}
-			
-			
-			#
-			# 4. Add the HPF image weighted relative to the global standard deviation of
-			# the Multi-Spectral band.
-			# ----------------------------------------------------------------------------
-			
-			# The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
-			# where:
-			# SD(MS) and SD(HPF) are the Standard Deviations of the MS and HPF images
-			# M is a Modulator value
-			
-			# get Standard Deviations of Multi-Spectral Image(s) *and* the HPF Image
-			eval MS_STDDEV=`r.univar ${MS_IMAGE} -g | grep stddev`
-			eval HPF_STDDEV=`r.univar ${Temporary_HPF} -g | grep stddev`
-			
-			# compute weighting
-			Weighting=$( echo "( ${MS_STDDEV} / ${HPF_STDDEV} * ${!Modulating_Factor} )" | bc )
-			
-			# create temporary file
-			Temporary_MSHPF=`g.tempfile pid=$$`
-			if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ] ; then
-			g.message -e "unable to create temporary files"
-			exit 1
-			fi
-			
-			# Add weighted HPF image to the bilinearly resampled Multi-Spectral band
-			r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * ${Weighting}"
-			
-			
-			
-			
-			#
-			# 5. Stretch linearly the new HPF-Sharpened image to match the mean and
-			# standard deviation of the input Multi-Sectral image.
-			# ----------------------------------------------------------------------------
-			
-			# which module of formula?
-			input=${Temporary_MSHPF} \
-			  output=MS_HPF_Sharpened \
-				
+  input="${GIS_OPT_PAN}" \
+  filter="HPF_FILE_${Kernel_Size}" \
+  output="${Temporary_HPF}" \
+  title="High Pass Filtered Panchromatic Image"
+
+
+
+#
+# 3. Resample the Multi-Spectral image to the pixel size of the high-pass image.
+# Note, bilinear resampling required (4 nearest neighbours)!
+# ----------------------------------------------------------------------------
+
+  # create a temp file
+  Temporary_MSBLNR=`g.tempfile pid=$$`
+  if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ] ; then
+  g.message -e "unable to create temporary files"
+  exit 1
+  fi
+
+  # resample
+  r.resamp.interp \
+  method="bilinear" \
+  input="${GIS_OPT_MSX}" \
+  output="${Temporary_MSBLNR}"
+
+
+
+#
+# 4. Add the HPF image weighted relative to the global standard deviation of
+# the Multi-Spectral band.
+# ----------------------------------------------------------------------------
+
+# The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
+  # where:
+	# SD(MS) and SD(HPF) are the Standard Deviations of the MS and HPF images
+	# M is a Modulator value
+
+  # get Standard Deviations of Multi-Spectral Image(s) *and* the HPF Image
+  eval MS_STDDEV=`r.univar $GIS_OPT_MSX} -g | grep stddev`
+  eval HPF_STDDEV=`r.univar ${Temporary_HPF} -g | grep stddev`
+
+  # compute weighting
+  Weighting=$( echo "( ${MS_STDDEV} / ${HPF_STDDEV} * ${!Modulating_Factor} )" | bc )
+
+  # create temporary file
+  Temporary_MSHPF=`g.tempfile pid=$$`
+  if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ] ; then
+  g.message -e "unable to create temporary files"
+  exit 1
+  fi
+
+  # Add weighted HPF image to the bilinearly resampled Multi-Spectral band
+  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * ${Weighting}"
+
+
+
+
+#
+# 5. Stretch linearly the new HPF-Sharpened image to match the mean and
+# standard deviation of the input Multi-Sectral image.
+# ----------------------------------------------------------------------------
+
+# which module of formula?
+input=${Temporary_MSHPF} \
+  output=MS_HPF_Sharpened \
+	
 
 
 #
