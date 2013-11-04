@@ -133,15 +133,15 @@ exitprocedure()
   exit 1
   }
 
-# shell check for user break (signal list: trap -l)
-trap "exitprocedure" 2 3 15
+# # shell check for user break (signal list: trap -l)
+# trap "exitprocedure" 2 3 15
 
 
 # bc available?
 SCRIPT=`basename $0`
 if [ ! -x "`which bc`" ]
-then g.message -i "${SCRIPT}: bc required, please install it first" 2>&1
-exit 1
+  then g.message -i "${SCRIPT}: bc required, please install it first" 2>&1
+  exit 1
 fi
 
 # # clone current region
@@ -166,14 +166,14 @@ fi
 if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 0 ]
   then g.message -i "Using a Low center value"
   Center_Level="Low"
-else g.message "Flag -l not set"
+else g.message -v "Flag -l not set"
 fi
 
 # h - high center cell value
 if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_L -eq 0 ]
   then g.message -i "Using a High center value"
   Center_Level="High"
-else g.message "Flag -h not set"
+else g.message -v "Flag -h not set"
 fi
 
 	# conflicting flags?
@@ -184,7 +184,7 @@ fi
 
 # default modulating factor
 if [ $GIS_FLAG_I -eq 0 ] && [ $GIS_FLAG_A -eq 0 ]
-  then g.message "Using the default modulating factor"
+  then g.message -v "Using the default modulating factor"
   Modulator_Level="Default"
 fi
 
@@ -192,14 +192,14 @@ fi
 if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 0 ]
   then g.message -i "Using the Minimum modulating factor"
 	Modulator_Level="Min"
-  else g.message "Flag -i not set"
+  else g.message -v "Flag -i not set"
 fi
 
 # a - maximum modulating factor
 if [ $GIS_FLAG_A -eq 1 ] && [ $GIS_FLAG_I -eq 0 ]
   then g.message -i "Using the Maximum modulating factor"
 	Modulator_Level="Max"
-  else g.message "Flag -a not set"
+  else g.message -v "Flag -a not set"
 fi
 
 	# conflicting flags?
@@ -257,6 +257,7 @@ fi
 # What was requested? ----------------------------------------------------------
 
 # Flags/Parameters
+g.message -v " "
 g.message -v "Requested parameters:"
 g.message -v "* Center Cell Level: ${Center_Level}"
 g.message -v "* Modulating Factor Level: ${Modulator_Level}"
@@ -267,6 +268,7 @@ fi
 
 
 # Input Images
+g.message -v " "
 g.message -v "Images to be fused:"
 
 
@@ -275,11 +277,18 @@ eval `g.findfile element=cell file="${GIS_OPT_PAN}"`
 if [ -z "$name" ]
   then g.message -e "can't find the <${GIS_OPT_PAN}> image."
 	exit 1
-  else g.message -v "* The high resolution image: ${GIS_OPT_PAN}"
+  else g.message -v "* High resolution image:	${GIS_OPT_PAN}"
 fi
 
 # check if input multi-spectral image exists
+
+# save default IFS
+Default_IFS=$IFS
+
+# set to comma
 IFS=,
+
+# loop over...
 for Image in ${GIS_OPT_MSX}
   do
 	# check if Image exists
@@ -287,9 +296,12 @@ for Image in ${GIS_OPT_MSX}
 	if [ -z "$name" ]
 	  then g.message -e "can't find the <${Image}> image."
 		exit 1
-	  else g.message -v "* The low resolution image: ${Image}"
+	  else g.message -v "* Low resolution image:	${Image}"
 	fi
 done
+
+# reset IFS
+IFS=${Default_IFS}
 
 
 
@@ -327,12 +339,12 @@ fi
 
 
 
-# a High Pass Filter Matrix (of Matrix_Dimension^2) Constructor Function
+# a High Pass Filter Matrix (of Matrix_Dimension^2) Constructor
 function hpf_matrix {
 
   # Positional Parameters
-  Matrix_Dimension="${1}"
-  Center_Cell_Value="${2}"
+  eval Matrix_Dimension="${1}"
+  eval Center_Cell_Value="${2}"
 
   # Define the cell value(s)
   function hpf_cell_value {
@@ -352,7 +364,7 @@ function hpf_matrix {
   # Construct the Matrix
   echo "MATRIX    ${Matrix_Dimension}"
   for Row in `seq ${Matrix_Dimension}`
-	do echo "$(hpf_row)"
+  	do echo "$(hpf_row)"
   done
   echo "DIVISOR   1"
   echo "TYPE      P"
@@ -390,6 +402,7 @@ function hpf_matrix {
   set --
   
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
+  g.message -v " "
   g.message -v "The Matrix is:"
   g.message -v "${HPF_MATRIX_ASCII}"
 
@@ -398,7 +411,7 @@ function hpf_matrix {
 					  # "MATRIX    5
 					  # -1 -1 -1 -1 -1
 					  # -1 -1 -1 -1 -1
-					  # -1 -1 $(echo ${Center_Cell}) -1 -1
+					  # -1 -1 $(echo ${!Center_Cell}) -1 -1
 					  # -1 -1 -1 -1 -1
 					  # -1 -1 -1 -1 -1
 					  # DIVISOR   1
@@ -521,12 +534,13 @@ function hpf_matrix {
   fi
 
   # create filter ASCII file
-  echo "${HPF_MATRIX}" > HPF_FILE_${Kernel_Size}
+  echo "${HPF_MATRIX_ASCII}" > HPF_File_${Kernel_Size}
+  eval HPF_FILE="HPF_File_${Kernel_Size}"
 
   ### ADD Additional Checks ###
-
-  g.message "High Pass Filter created with the following parameters:"
-  g.message "Kernel Size: ${Kernel_Size}; Center Value: ${Center_Cell}; Modulating Factor: ${Modulating_Factor}"
+  g.message -v " "
+  g.message -v "High Pass Filter created with the following parameters:"
+  g.message -v "Kernel Size: ${Kernel_Size}; Center Value: ${!Center_Cell}; Modulating Factor: ${!Modulating_Factor:-None}"
 
   # create a temp file
   Temporary_HPF=`g.tempfile pid=$$`
@@ -535,11 +549,19 @@ function hpf_matrix {
   exit 1
   fi
 
+# Does it exist?
+eval `g.findfile element=cell file="${Temporary_HPF}"`
+  if [ -z "$name" ]
+	then g.message -e "can't find the <${Temporary_HPF}> image."
+	exit 1
+  else g.message -i "* Intermediate High Pass Filtered image:	${Temporary_HPF}"
+fi
+
   # apply filter (for G64 -- for G7 use r.mfilter?)
   r.mfilter \ 
   input="${GIS_OPT_PAN}" \
-  filter="HPF_FILE_${Kernel_Size}" \
-  output="${Temporary_HPF}" \
+  filter="${HPF_FILE}" \
+  output="Temporary_HPF" \
   title="High Pass Filtered Panchromatic Image"
 
   # write cmd history

@@ -17,14 +17,14 @@ function hpf_matrix {
 
   # Construct the Row for Cols 1 to "Matrix_Dimension"
   function hpf_row {
-	for Column in `seq ${Matrix_Dimension}`;
+	for Column in $(seq ${Matrix_Dimension});
 	  do echo -n "$(hpf_cell_value)";
 	done
   }
 
   # Construct the Matrix
   echo "MATRIX    ${Matrix_Dimension}"
-  for Row in `seq ${Matrix_Dimension}`;
+  for Row in $(seq ${Matrix_Dimension});
 	do echo "$(hpf_row)";
   done
   echo "DIVISOR   1"
