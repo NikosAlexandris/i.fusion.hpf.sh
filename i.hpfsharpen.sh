@@ -6,7 +6,7 @@
 #
 # MODULE:       i.hpfsharpen
 # AUTHOR(S):    Nikos Alexandris <nik@nikosalexandris.net>
-#				Nikos Ves
+#				Nikos Ves <>
 # PURPOSE:		HPF Resolution Merge -- Algorithm Replication in GRASS GIS
 #
 # 				Function to combine high-resolution panchromatic data with
@@ -16,8 +16,7 @@
 #
 # 				The process involves a convolution using a High Pass Filter
 # 				(HPF) on the high resolution data, then combining this with
-# 				the lower resolution multispectral data. Read the description
-# 				of the Algorithm below.
+# 				the lower resolution multispectral data.
 #
 # 				Source: "Optimizing the High-Pass Filter Addition Technique for
 # 				Image Fusion", Ute G. Gangkofner, Pushkar S. Pradhan,
@@ -34,7 +33,11 @@
 # i.hpfsharpen Script for High Pass Filter based pan sharpening
 
 #%module
-#%  description: i.hpfsharpen test script   
+#%  description: High-Pass Filter Additive Pan-Sharpening method
+#%end
+#%flag
+#%  key: m
+#%  description: Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)
 #%end
 #%flag
 #%  key: l
@@ -79,7 +82,13 @@
 #% required : yes
 #% multiple : yes
 #%end
-
+#%option
+#% key: output_suffix
+#% type: string
+#% gisprompt: old,double,raster
+#% description: HPF Pan-Sharpened Multi-Spectral image(s)
+#% required : yes
+#%end
 
 # Various checks -------------------------------------------------------------
 
@@ -89,6 +98,42 @@ if [ -z "$GISBASE" ] ; then
     exit 1
 fi
 
+# save command line
+if [ "$1" != "@ARGS_PARSED@" ]
+  then CMDLINE=`basename "$0"`
+	for arg in "$@"
+	  do CMDLINE="$CMDLINE \"$arg\""
+	done
+  export CMDLINE
+  exec g.parser "$0" "$@"
+fi
+
+# # parsing?
+# if [ "$1" != "@ARGS_PARSED@" ] ; then
+#     exec g.parser "$0" "$@"
+# else
+#   g.message -w "No parameters given..."
+# fi
+
+cleanup()
+{
+  #remove temporary region file
+  unset WIND_OVERRIDE
+  g.remove region="i.hpfsharpen.$TMPPID" --quiet
+  }
+
+# what to do in case of user break:
+exitprocedure()
+{
+  g.message -e message='User break!'
+  cleanup
+  exit 1
+  }
+
+# shell check for user break (signal list: trap -l)
+trap "exitprocedure" 2 3 15
+
+
 # bc available?
 SCRIPT=`basename $0`
 if [ ! -x "`which bc`" ]
@@ -96,17 +141,16 @@ then g.message -i "${SCRIPT}: bc required, please install it first" 2>&1
 exit 1
 fi
 
-# parsing?
-if [ "$1" != "@ARGS_PARSED@" ] ; then
-    exec g.parser "$0" "$@"
-else
-  g.message -w "No parameters given..."
-fi
 
 
 
 # Flags requesting various parameters for the HPF Matrix and the Process -----
 echo ""
+
+# perform linear histogram matching?
+if [ $GIS_FLAG_M -eq 1 ]
+  then g.message "Will linearly match histograms to adapt StdDev and Mean of the HPF Pan-Sharpened output to those of the Multi-Spectral input."
+fi
 
 # default center cell value
 if [ $GIS_FLAG_L -eq 0 ] && [ $GIS_FLAG_H -eq 0 ]
@@ -210,7 +254,7 @@ fi
 
 # Flags/Parameters
 echo ""
-g.message -i "The requested parameters:"
+g.message -i "Requested parameters:"
 g.message -i "* Center Cell Level: ${Center_Level}"
 g.message -i "* Modulating Factor Level: ${Modulator_Level}"
 
@@ -221,26 +265,28 @@ fi
 
 # Input Images
 echo ""
+g.message -i "Images to be fused:"
+
 
 # check if input panchromatic image exists
 eval `g.findfile element=cell file="${GIS_OPT_PAN}"`
 if [ -z "$name" ]
-  then g.message -e "image <${GIS_OPT_PAN}> not found."
-  else g.message "The input high resolution Panchromatic image: ${GIS_OPT_PAN}"
-  exit 1
+  then g.message -e "can't find the <${GIS_OPT_PAN}> image."
+	exit 1
+  else g.message -i "* The high resolution image: ${GIS_OPT_PAN}"
 fi
 
 # check if input multi-spectral image exists
 IFS=,
-for Image in $GIS_OPT_MSX
+for Image in ${GIS_OPT_MSX}
   do
 	# check if Image exists
 	eval `g.findfile element=cell file="${Image}"`
 	if [ -z "$name" ]
-	  then g.message -e "image <${Image}> not found."
-	  exit 1
+	  then g.message -e "can't find the <${Image}> image."
+		exit 1
+	  else g.message -i "* The low resolution image: ${Image}"
 	fi
-	g.message "The input low resolution Multi-Spectral image: ${Image}"
 done
 
 
@@ -252,13 +298,25 @@ done
 # multispectral cell size to high-resolution cell size
 # ----------------------------------------------------------------------------
 
-eval `r.info ${GIS_OPT_PAN} -g | grep res`
-eval `r.info ${GIS_OPT_MSX} -g | grep res`
+echo ""
 
-if [ ${nsres} == ${ewres} ]
+# match region and resolution
+g.region rast="${GIS_OPT_MSX}"
+
+# eval ns, ew resolutions
+eval `g.region -g | grep ns`
+eval `g.region -g | grep ew`
+
+# check if ns == ew
+if [ ${nsres} -eq ${ewres} ]
   then eval MS_RESOLUTION="${nsres}"
+	# `r.info -s` for G64, `-g` for G7
+	eval `r.info ${GIS_OPT_PAN} -s | grep nsres`
+	eval PAN_RESOLUTION="${nsres}"
 	RATIO=$( echo "${MS_RESOLUTION} / ${PAN_RESOLUTION}" | bc )
-  else g.message "North-South and East-West Resolutions do not match!"
+	g.message -i "* Resolution ratio of the images is ${RATIO}."
+  else g.message -e "North-South and East-West Resolutions do not match!"
+	exit 1
 fi
 
 
@@ -268,30 +326,30 @@ fi
 # ----------------------------------------------------------------------------
 
 # a High Pass Filter Matrix (of Matrix_Dimension^2) Constructor Function
-HPF_Matrix(){
+hpf_matrix(){
 
   # Define the cell value(s)
-  HPF_Cell_Value(){
+  hpf_cell_value(){
 	if (( "${Row}" == "${Col}" )) && (( "${Col}" == `echo "(${Matrix_Dimension} + 1 ) / 2" | bc` ))
-	then echo "${HPF_Center_Value} "
+	then echo "${Center_Cell_Value} "
 	else echo "-1 " ; fi
 	}
 
   # Construct the Row for Cols 1 to "Matrix_Dimension"
-  HPF_Row(){
+  hpf_row(){
 	for Col in `seq ${Matrix_Dimension}`
 	do
-	echo -n "$(HPF_Cell_Value)"
+	echo -n "$(hpf_cell_value)"
 	done
 	}
 
   # Construct the Matrix
   Matrix_Dimension="${1}"
-  HPF_Center_Value="${2}"
+  Center_Cell_Value="${2}"
   echo "MATRIX    ${Matrix_Dimension}"
-  for Row in `seq "${Matrix_Dimension}"`
+  for Row in `seq ${Matrix_Dimension}`
 	do
-	  echo "$(HPF_Row)"
+	  echo "$(hpf_row)"
 	done
   echo "DIVISOR   1"
   echo "TYPE      P"
@@ -308,20 +366,24 @@ HPF_Matrix(){
 
   # kernel size
   Kernel_Size=5
+#   g.message -i "* Kernel Size set to: <${Kernel_Size}>."
 
   # potential center values
   Center_Default=24	;	Center_Low=28	;	Center_High=32
-  # setting center value
   eval Center_Cell="Center_${Center_Level}"
+#   g.message -i "* Center Cell Value set to: <${!Center_Cell}>."
 
   # modulation Factor
   Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
-
-  # setting modulation value
   eval Modulating_Factor="Modulator_${Modulating_Level}"
+#   g.message -i "* Modulating Factor set to: <${!Modulating_Factor}>."
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+#   g.message -i "hpf_matrix ${Kernel_Size} ${!Center_Cell}"
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
+  echo ""
+  g.message -i "The Matrix is:"
+  g.message -i "${HPF_MATRIX}"
 
   # Default will be:
 					  #   HPF_MATRIX=\
@@ -355,7 +417,7 @@ HPF_Matrix(){
   eval Modulating_Factor="Modulator_${Modulating_Level}"
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${Center_Cell}`
 
   fi
 
@@ -378,7 +440,7 @@ HPF_Matrix(){
   eval Modulating_Factor="Modulator_${Modulating_Level}"
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${Center_Cell}`
 
   fi
 
@@ -401,7 +463,7 @@ HPF_Matrix(){
   eval Modulating_Factor="Modulator_${Modulating_Level}"
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${Center_Cell}`
 
   fi
 
@@ -424,7 +486,7 @@ HPF_Matrix(){
   eval Modulating_Factor="Modulator_${Modulating_Level}"
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${Center_Cell}`
 
   fi
 
@@ -446,15 +508,15 @@ HPF_Matrix(){
   eval Modulating_Factor="Modulator_${Modulating_Level}"
 
   # the Matrix
-  HPF_MATRIX=$(HPF_Matrix ${Kernel_Size} ${Center_Cell})
+  HPF_MATRIX=`hpf_matrix ${Kernel_Size} ${Center_Cell}`
 
   fi
 
   # create filter ASCII file
   echo "${HPF_MATRIX}" > HPF_FILE_${Kernel_Size}
-  
+
   ### ADD Additional Checks ###
-  
+
   g.message "High Pass Filter created with the following parameters:"
   g.message "Kernel Size: ${Kernel_Size}; Center Value: ${Center_Cell}; Modulating Factor: ${Modulating_Factor}"
 
@@ -465,8 +527,8 @@ HPF_Matrix(){
   exit 1
   fi
 
-  # apply filter
-  r.mfilter.fp \
+  # apply filter (for G64 -- for G7 use r.mfilter?)
+  r.mfilter \ 
   input="${GIS_OPT_PAN}" \
   filter="HPF_FILE_${Kernel_Size}" \
   output="${Temporary_HPF}" \
@@ -486,7 +548,7 @@ HPF_Matrix(){
   exit 1
   fi
 
-  # resample
+  # resample -- named "linear" in G7
   r.resamp.interp \
   method="bilinear" \
   input="${GIS_OPT_MSX}" \
@@ -523,16 +585,19 @@ HPF_Matrix(){
 
 
 
-
 #
 # 5. Stretch linearly the new HPF-Sharpened image to match the mean and
 # standard deviation of the input Multi-Sectral image.
 # ----------------------------------------------------------------------------
 
-# which module of formula?
-input=${Temporary_MSHPF} \
-  output=MS_HPF_Sharpened \
+if [ $GIS_FLAG_M -eq 0 ]
+  then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUT_SUFFIX}
+  else g.message -i "Matching histograms..." # linear hisogram matching to adapt output StdDev and Mean to the input-ted ones
+  # r.mapcalc
+  # input=${Temporary_MSHPF} \
+  # output=${GIS_OPT_MSX}_${GIS_OPT_OUTPUT_SUFFIX} \
 	
+fi
 
 
 #
