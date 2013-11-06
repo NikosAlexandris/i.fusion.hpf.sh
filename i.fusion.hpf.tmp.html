@@ -16,33 +16,15 @@ imagery, fusion, HPF, HPFA
 <h2>SYNOPSIS</h2>
 <b>i.fusion.hpf</b><br>
 <b>i.fusion.hpf help</b><br>
-<b>i.fusion.hpf</b> [-<b>lmhia2nx</b>] <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>output_suffix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
+<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>center</b>=<em>string</em>[,<i>string</i>,...]]   [<b>modulator</b>=<em>string</em>]   [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>output_suffix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
 
 <h3>Flags:</h3>
 <DL>
 <DT><b>-l</b></DT>
 <DD>Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)</DD>
 
-<DT><b>-m</b></DT>
-<DD>Use a Mid value for the filter's center value</DD>
-
-<DT><b>-h</b></DT>
-<DD>Use a High value for the filter's center value</DD>
-
-<DT><b>-i</b></DT>
-<DD>Use the Minimum modulating factor for weighting the HPF image</DD>
-
-<DT><b>-a</b></DT>
-<DD>Use the Maximum modulating factor for weighting the HPF image</DD>
-
 <DT><b>-2</b></DT>
 <DD>2-Pass Processing (recommended) for large Resolution Ratio (>=5.5)</DD>
-
-<DT><b>-n</b></DT>
-<DD>Use the Minimum modulating factor for weighting the HPF image in the 2-Pass</DD>
-
-<DT><b>-x</b></DT>
-<DD>Use the Maximum modulating factor for weighting the HPF image in the 2-Pass</DD>
 
 <DT><b>--verbose</b></DT>
 <DD>Verbose module output</DD>
@@ -52,6 +34,30 @@ imagery, fusion, HPF, HPFA
 
 <h3>Parameters:</h3>
 <DL>
+<DT><b>center</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Center cell value of the High-Pass-Filter</DD>
+<DD>Options: <em>low,mid,high</em></DD>
+<DD>Default: <em>low</em></DD>
+<DD><b>low</b>: Low center cell value</DD>
+<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
+<DD><b>high</b>: Use a High value for the filter's center value</DD>
+
+<DT><b>modulator</b>=<em>string</em></DT>
+<DD>Level of modulating factor to determine crispness</DD>
+<DD>Options: <em>mid,min,max</em></DD>
+<DD>Default: <em>mid</em></DD>
+<DD><b>mid</b>: Mid modulating factor</DD>
+<DD><b>min</b>: Use the Minimum modulating factor for weighting the HPF image</DD>
+<DD><b>max</b>: Use the Maximum modulating factor for weighting the HPF image</DD>
+
+<DT><b>modulator2</b>=<em>string</em></DT>
+<DD>Level of modulating factor to determine crispness for the second pass</DD>
+<DD>Options: <em>mid,min,max</em></DD>
+<DD>Default: <em>mid</em></DD>
+<DD><b>mid</b>: Use the Mid modulating factor 0.35 for weighting the HPF image in the 2-Pass</DD>
+<DD><b>min</b>: Use the Minimum modulating factor 0.25 for weighting the HPF image in the 2-Pass</DD>
+<DD><b>max</b>: Use the Maximum modulating factor 0.5 for weighting the HPF image in the 2-Pass</DD>
+
 <DT><b>pan</b>=<em>string</em></DT>
 <DD>High resolution Panchromatic image for sharpening multi-spectral image</DD>
 
@@ -60,7 +66,7 @@ imagery, fusion, HPF, HPFA
 
 <DT><b>output_suffix</b>=<em>string</em></DT>
 <DD>HPF Pan-Sharpened Multi-Spectral image(s)</DD>
-<DD>Default: <em>HPF_Filtered</em></DD>
+<DD>Default: <em>HPF_Sharpened</em></DD>
 
 </DL>
 # ToDo

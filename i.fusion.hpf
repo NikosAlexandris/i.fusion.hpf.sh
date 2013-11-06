@@ -37,37 +37,41 @@
 #%  description: Fuses a High-Resolution Panchromatic with its correspondin Low Resolution Multi-Spectral image based on the High-Pass Filter Addition technique
 #%  keywords: imagery, fusion, HPF, HPFA
 #%End
+#%option
+#% key: center
+#% type: string
+#% description: Center cell value of the High-Pass-Filter 
+#% descriptions: low;Low center cell value;mid;Use a Mid value for the filter's center value;high;Use a High value for the filter's center value
+#% options: low,mid,high
+#% answer: low
+#% guisection: High Pass Filter
+#% multiple : yes
+#%end
+#%option
+#% key: modulator
+#% type: string
+#% description: Level of modulating factor to determine crispness
+#% descriptions: mid;Mid modulating factor;min;Use the Minimum modulating factor for weighting the HPF image;max;Use the Maximum modulating factor for weighting the HPF image;
+#% options: mid,min,max
+#% answer: mid
+#% guisection: High Pass Filter
+#%end
+#%option
+#% key: modulator2
+#% type: string
+#% description: Level of modulating factor to determine crispness for the second pass
+#% descriptions: mid;Use the Mid modulating factor 0.35 for weighting the HPF image in the 2-Pass;min;Use the Minimum modulating factor 0.25 for weighting the HPF image in the 2-Pass;max;Use the Maximum modulating factor 0.5 for weighting the HPF image in the 2-Pass;
+#% options: mid,min,max
+#% answer: mid
+#% guisection: High Pass Filter
+#%end
 #%flag
 #%  key: l
 #%  description: Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)
 #%end
 #%flag
-#%  key: m
-#%  description: Use a Mid value for the filter's center value
-#%end
-#%flag
-#%  key: h
-#%  description: Use a High value for the filter's center value
-#%end
-#%flag
-#%  key: i
-#%  description: Use the Minimum modulating factor for weighting the HPF image
-#%end
-#%flag
-#%  key: a
-#%  description: Use the Maximum modulating factor for weighting the HPF image
-#%end
-#%flag
 #%  key: 2
 #%  description: 2-Pass Processing (recommended) for large Resolution Ratio (>=5.5)
-#%end
-#%flag
-#%  key: n
-#%  description: Use the Minimum modulating factor for weighting the HPF image in the 2-Pass
-#%end
-#%flag
-#%  key: x
-#%  description: Use the Maximum modulating factor for weighting the HPF image in the 2-Pass
 #%end
 #%option
 #% key: pan
@@ -81,16 +85,16 @@
 #% type: string
 #% gisprompt: old,double,raster
 #% description: Multi-Spectral image(s) to be pan-sharpened
-#% required : yes
-#% multiple : yes
+#% required: yes
+#% multiple: yes
 #%end
 #%option
 #% key: output_suffix
 #% type: string
 #% gisprompt: old,double,raster
 #% description: HPF Pan-Sharpened Multi-Spectral image(s)
-#% required : yes
-#% answer : HPF_Filtered
+#% required: yes
+#% answer: HPF_Sharpened
 #%end
 
 # Various checks -------------------------------------------------------------
@@ -110,6 +114,9 @@ if [ "$1" != "@ARGS_PARSED@" ]
   export CMDLINE
   exec g.parser "$0" "$@"
 fi
+
+# save default IFS
+Default_IFS=$IFS
 
 # function cleanup {
 #   #remove temporary region file
@@ -147,105 +154,127 @@ if [ $GIS_FLAG_L -eq 1 ]
   then g.message "Will linearly match histograms to adapt StdDev and Mean of the HPF Pan-Sharpened output to those of the Multi-Spectral input."
 fi
 
-# default center cell value
-if [ $GIS_FLAG_M -eq 0 ] && [ $GIS_FLAG_H -eq 0 ]
-  then g.message "Using a Low center value [Default]"
-  Center_Level="Default"
+# default or low (is the same) center cell value
+if [ $GIS_OPT_CENTER == "low" ]
+  then GIS_OPT_CENTER="Default"
+  g.message "Using a Low center value [Default]"
 fi
 
-# l - low center cell value
-if [ $GIS_FLAG_M -eq 1 ] && [ $GIS_FLAG_H -eq 0 ]
-  then g.message -i "Using a Mid center value"
-  Center_Level="Low"
-else g.message -v "Flag -l not set"
+# mid center cell value
+if [ $GIS_OPT_CENTER == "mid" ]
+  then GIS_OPT_CENTER="Mid"
+	g.message -i "Using a Mid center value"
+  else g.message -v "Mid center value not requested"
 fi
 
-# h - high center cell value
-if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_M -eq 0 ]
-  then g.message -i "Using a High center value"
-  Center_Level="High"
-else g.message -v "Flag -h not set"
+# high center cell value
+if [ $GIS_OPT_CENTER == "high" ]
+  then GIS_OPT_CENTER="High"
+	g.message -i "Using a High center value"
+  else g.message -v "High center value not requested"
 fi
 
-	# conflicting flags?
-	if [ $GIS_FLAG_M -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
-	then g.message -e "Requested both a Mid and a High center value for the filter! Please, instruct only one of them."
-	exit 1
-  fi
+  # conflicting options?
 
-# default modulating factor
-if [ $GIS_FLAG_I -eq 0 ] && [ $GIS_FLAG_A -eq 0 ]
-  then g.message -v "Using the default modulating factor"
-  Modulating_Level="Default"
+	  # set to comma =============================================================
+	  IFS=,
+	  
+	  # count options  
+	  CENTER=( $GIS_OPT_CENTER )
+	  if [ `echo ${#CENTER[@]}` -gt 1 ]
+	  then g.message -e "Requested more than one center value for the filter! Please, instruct only one of them."
+	  exit 1
+	  fi
+	  
+	  # reset IFS ================================================================
+	  IFS=${Default_IFS}
+
+
+# default or mid (is the same) modulating factor
+if [ $GIS_OPT_MODULATOR == "mid" ]
+  then GIS_OPT_MODULATOR="Default"
+  g.message -v "Using the Mid modulating factor [Default]"
 fi
 
-# i - minimum modulating factor
-if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 0 ]
-  then g.message -i "Using the minimum modulating factor"
-	Modulating_Level="Min"
-  else g.message -v "Minimum modulating factor (-i flag) not requested"
+# minimum modulating factor
+if [ $GIS_OPT_MODULATOR == "min" ]
+  then GIS_OPT_MODULATOR="Min"
+	g.message -i "Using the minimum modulating factor"
+  else g.message -v "Minimum modulating factor not requested"
 fi
 
-# a - maximum modulating factor
-if [ $GIS_FLAG_A -eq 1 ] && [ $GIS_FLAG_I -eq 0 ]
-  then g.message -i "Using the Maximum modulating factor"
-	Modulating_Level="Max"
-  else g.message -v "Maximum modulating factor (-a flag) not requested"
+# maximum modulating factor
+if [ $GIS_OPT_MODULATOR == "max" ]
+  then GIS_OPT_MODULATOR="Max"
+	g.message -i "Using the Maximum modulating factor"
+  else g.message -v "Maximum modulating factor not requested"
 fi
 
-	# conflicting flags?
-	if [ $GIS_FLAG_I -eq 1 ] && [ $GIS_FLAG_A -eq 1 ]
-	then g.message -e "Requested both a Min and a Max modulating factor for the weighting process! Please, instruct only one of them."
-	exit 1
-  fi
+  # conflicting options?
 
-# 2-pass process for large ratios
-if [ $GIS_FLAG_2 -eq 1 ]
-  then g.message -i "Performing a 2-pass processing -- Not Implemented!"
+	# set to comma ===========================================================
+	IFS=,
 
-	# default modulating factor 2
-	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 0 ] && [ $GIS_FLAG_X -eq 0 ]
-	  then g.message "Using a default modulating factor for the 2-pass process"
-	  Modulating_Level_2="Default"
-	fi
-
-	# n
-	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 0 ]
-	  then g.message -i "Using the Minimum modulating factor for the 2-pass process"
-		Modulating_Level_2="Min"
-	  else g.message "Flag -I not set"
-	fi
-
-	# x
-	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
-	  then g.message -i "Using the Maximum modulating factor for the 2-pass process"
-		Modulating_Level_2="Max"
-	  else g.message "Flag -A not set"
-	fi
-
-		# conflicting flags?
-		if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 1 ]
-	  then g.message -e "Requested both a Min and a Max modulating factor for the 2-pass weighting process! Please, instruct only one of them."
+	# count options  
+	MODULATOR=( $GIS_OPT_MODULATOR )
+	if [ `echo ${#MODULATOR[@]}` -gt 1 ]
+	  then g.message -e "Requested more than one modulating factors for the weighting process! Please, instruct only one of them."
 	  exit 1
 	fi
 
-  else g.message "Flag -2 not set"
-  
-	if [ $GIS_FLAG_2 -eq 0 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 0 ]
-	then g.message -i "Please request the 2-pass process by instructing the -2 flag!"
-	exit 1
-	fi
-	
-	# x
-	if [ $GIS_FLAG_2 -eq 0 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
-	then g.message -i "Please request the 2-pass process by instructing the -2 flag!"
-	exit 1
-	fi
+	# reset IFS ==============================================================
+	IFS=${Default_IFS}
 
+
+
+# 2-pass process for large ratios  ---  FIX THIS ===============================
+if [ $GIS_FLAG_2 -eq 1 ]
+  then g.message -i "Performing a 2-pass processing -- Not Implemented!"
+
+# 	# default modulating factor 2
+# 	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 0 ] && [ $GIS_FLAG_X -eq 0 ]
+# 	  then g.message "Using a default modulating factor for the 2-pass process"
+# 	  Modulating_Level_2="Default"
+# 	fi
+# 
+# 	# n
+# 	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 0 ]
+# 	  then g.message -i "Using the Minimum modulating factor for the 2-pass process"
+# 		Modulating_Level_2="Min"
+# 	  else g.message "Flag -I not set"
+# 	fi
+# 
+# 	# x
+# 	if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
+# 	  then g.message -i "Using the Maximum modulating factor for the 2-pass process"
+# 		Modulating_Level_2="Max"
+# 	  else g.message "Flag -A not set"
+# 	fi
+# 
+# 		# conflicting flags?
+# 		if [ $GIS_FLAG_2 -eq 1 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 1 ]
+# 	  then g.message -e "Requested both a Min and a Max modulating factor for the 2-pass weighting process! Please, instruct only one of them."
+# 	  exit 1
+# 	fi
+# 
+#   else g.message "Flag -2 not set"
+#   
+# 	if [ $GIS_FLAG_2 -eq 0 ] && [ $GIS_FLAG_N -eq 1 ] && [ $GIS_FLAG_X -eq 0 ]
+# 	then g.message -i "Please request the 2-pass process by instructing the -2 flag!"
+# 	exit 1
+# 	fi
+# 	
+# 	# x
+# 	if [ $GIS_FLAG_2 -eq 0 ] && [ $GIS_FLAG_X -eq 1 ] && [ $GIS_FLAG_N -eq 0 ]
+# 	then g.message -i "Please request the 2-pass process by instructing the -2 flag!"
+# 	exit 1
+# 	fi
+# 
 fi
 
+# ==============================================================================
 
-# What was requested? ----------------------------------------------------------
+# What was requested? --------------------------------------------------------
 
 # Input Images
 g.message -v " "
@@ -262,10 +291,7 @@ fi
 
 # check if input multi-spectral image exists
 
-# save default IFS
-Default_IFS=$IFS
-
-# set to comma
+# set to comma ===============================================================
 IFS=,
 
 # loop over...
@@ -280,14 +306,14 @@ for Image in ${GIS_OPT_MSX}
 	fi
 done
 
-# reset IFS
+# reset IFS ==================================================================
 IFS=${Default_IFS}
 
 # Flags/Parameters
 g.message -v " "
 g.message -v "Requested parameters:"
-g.message -v "* Center Cell Level: ${Center_Level}"
-g.message -v "* Modulating Factor Level: ${Modulating_Level}"
+g.message -v "* Center Cell Level: ${GIS_OPT_CENTER}"
+g.message -v "* Modulating Factor Level: ${MODULATOR}"
 
 if [ $GIS_FLAG_2 -eq 1 ]
   then g.message -i "* Modulating Factor Level_2: ${Modulator_Level_2}"
@@ -305,7 +331,7 @@ fi
 # ----------------------------------------------------------------------------
 
 g.message -i " "
-g.message -i "Step 1. Computing Ratio of MSX to Pan Image"
+g.message -i "[1] Computing Ratio of MSX to Pan Image"
 g.message -v " "
 
 # First, check & warn user about "ns == ew" resolution of current region
@@ -341,7 +367,7 @@ g.message -v "* Ratio of image resolutions is: ${RATIO}."
 # ----------------------------------------------------------------------------
 
 g.message -i " "
-g.message -i "Step 2. High Pass Filtering the Pan Image"
+g.message -i "[2] High Pass Filtering the Pan Image"
 
 # Respect current region -- Change the resolution
 g.region res=${PAN_RESOLUTION}
@@ -392,12 +418,12 @@ function hpf_matrix {
   Kernel_Size=5
 
   # potential center values
-  Center_Default=24	;	Center_Low=28	;	Center_High=32
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=24	;	Center_Mid=28	;	Center_High=32
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation Factor
   Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -426,12 +452,12 @@ function hpf_matrix {
   Kernel_Size=7 #&& echo ${Kernel_Size}
 
   # center values
-  Center_Default=48	;	Center_Low=56	;	Center_High=64
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=48	;	Center_Mid=56	;	Center_High=64
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
   Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -449,12 +475,12 @@ function hpf_matrix {
   Kernel_Size=9 #&& echo ${Kernel_Size}
 
   # center values 
-  Center_Default=80	;	Center_Low=96	;	Center_High=106
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=80	;	Center_Mid=96	;	Center_High=106
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
   Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -472,12 +498,12 @@ function hpf_matrix {
   Kernel_Size=11 #&& echo ${Kernel_Size}
 
   # center values
-  Center_Default=120 ; Center_Low=150 ; Center_High=180
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=120 ; Center_Mid=150 ; Center_High=180
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
   Modulator_Min=1.0 ; Modulator_Default=0.65 ; Modulator_Max=0.50
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -495,12 +521,12 @@ function hpf_matrix {
   Kernel_Size=13 #&& echo ${Kernel_Size}
 
   # center values
-  Center_Default=168	;	Center_Low=210	;	Center_High=252
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=168	;	Center_Mid=210	;	Center_High=252
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
   Modulator_Min=1.4 ; Modulator_Default=1.0 ; Modulator_Max=0.65
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -517,12 +543,12 @@ function hpf_matrix {
   Kernel_Size=15 #&& echo ${Kernel_Size}
 
   # center values
-  Center_Default=336	;	Center_Low=392	;	Center_High=448
-  eval Center_Cell="Center_${Center_Level}"
+  Center_Default=336	;	Center_Mid=392	;	Center_High=448
+  eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
   Modulator_Min=2.0 ; Modulator_Default=1.35 ; Modulator_Max=1.0
-  eval Modulating_Factor="Modulator_${Modulating_Level}"
+  eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
@@ -580,7 +606,7 @@ function hpf_matrix {
 # ----------------------------------------------------------------------------
 
 g.message -i " "
-g.message -i "Step 3. Resampling MSX image to the higher resolution"
+g.message -i "[3] Resampling MSX image to the higher resolution"
 
   # create a temp file
   Temporary_MSBLNR="i.fusion.hpf.$$"
@@ -612,7 +638,7 @@ g.message -i "Step 3. Resampling MSX image to the higher resolution"
 # ----------------------------------------------------------------------------
 
 g.message -i " "
-g.message -i "Step 4. Adding weighted HPF image to the resampled MSX image"
+g.message -i "[4] Adding weighted HPF image to the resampled MSX image"
 g.message -i " "
 
 
@@ -653,10 +679,11 @@ g.message -v "  Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
   fi
 
   # Add weighted HPF image to the bilinearly resampled Multi-Spectral band
-  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * ${Weighting}"
+  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * double (${Weighting})"
 
   # write cmd history
-# r.support "" history="${CMDLINE}"
+  r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
+#   r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
 
   # Remove this! ######################################################### ###
   g.copy rast="${Temporary_MSHPF}","HPF_Sharpened_${GIS_OPT_MSX}"
@@ -667,7 +694,7 @@ g.message -v "  Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
 # standard deviation of the input Multi-Sectral image.
 # ----------------------------------------------------------------------------
 
-g.message -i "Step 5. Optionally, matching histogram of Pansharpened image to the one of the original MSX image"
+g.message -i "[5] Optionally, matching histogram of Pansharpened image to the one of the original MSX image"
 g.message -i "...not implemented"
 
 # if [ $GIS_FLAG_L -eq 0 ]
@@ -688,10 +715,10 @@ g.message -i "...not implemented"
 # g.message -v "Restoring region settings."
 # cleanup
 
-# Remove temporary files
-g.remove ${Temporary_HPF}
-g.remove ${Temporary_MSBLNR}
-g.remove ${Temporary_MSHPF}
+# Remove temporary files -- Fix This!
+# g.remove ${Temporary_HPF}
+# g.remove ${Temporary_MSBLNR}
+# g.remove ${Temporary_MSHPF}
 
 
 
