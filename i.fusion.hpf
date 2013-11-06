@@ -7,7 +7,7 @@
 
 ############################################################################
 #
-# MODULE:       i.hpfsharpen
+# MODULE:       i.fusion.hpf
 # AUTHOR(S):    Nikos Alexandris <nik@nikosalexandris.net>
 #				Nikos Ves <>
 # PURPOSE:		HPF Resolution Merge -- Algorithm Replication in GRASS GIS
@@ -33,18 +33,17 @@
 #
 #############################################################################
 
-# i.hpfsharpen Script for High Pass Filter based pan sharpening
-
-#%module
-#%  description: High-Pass Filter Additive Pan-Sharpening method
-#%end
+#%Module
+#%  description: Fuses a High-Resolution Panchromatic with its correspondin Low Resolution Multi-Spectral image based on the High-Pass Filter Addition technique
+#%  keywords: imagery, fusion, HPF, HPFA
+#%End
 #%flag
-#%  key: m
+#%  key: l
 #%  description: Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)
 #%end
 #%flag
-#%  key: l
-#%  description: Use a Low value for the filter's center value
+#%  key: m
+#%  description: Use a Mid value for the filter's center value
 #%end
 #%flag
 #%  key: h
@@ -112,27 +111,18 @@ if [ "$1" != "@ARGS_PARSED@" ]
   exec g.parser "$0" "$@"
 fi
 
-# # parsing?
-# if [ "$1" != "@ARGS_PARSED@" ] ; then
-#     exec g.parser "$0" "$@"
-# else
-#   g.message -w "No parameters given..."
-# fi
-
-# cleanup()
-# {
+# function cleanup {
 #   #remove temporary region file
 #   unset WIND_OVERRIDE
 #   g.remove region="i.hpfsharpen.$TMPPID" --quiet
-#   }
+# }
 
 # what to do in case of user break:
-exitprocedure()
-{
+function exitprocedure {
   g.message -e message='User break!'
   cleanup
   exit 1
-  }
+}
 
 # shell check for user break (signal list: trap -l)
 trap "exitprocedure" 2 3 15
@@ -153,33 +143,33 @@ fi
 echo ""
 
 # perform linear histogram matching?
-if [ $GIS_FLAG_M -eq 1 ]
+if [ $GIS_FLAG_L -eq 1 ]
   then g.message "Will linearly match histograms to adapt StdDev and Mean of the HPF Pan-Sharpened output to those of the Multi-Spectral input."
 fi
 
 # default center cell value
-if [ $GIS_FLAG_L -eq 0 ] && [ $GIS_FLAG_H -eq 0 ]
-  then g.message "Using a default center value"
+if [ $GIS_FLAG_M -eq 0 ] && [ $GIS_FLAG_H -eq 0 ]
+  then g.message "Using a Low center value [Default]"
   Center_Level="Default"
 fi
 
 # l - low center cell value
-if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 0 ]
-  then g.message -i "Using a Low center value"
+if [ $GIS_FLAG_M -eq 1 ] && [ $GIS_FLAG_H -eq 0 ]
+  then g.message -i "Using a Mid center value"
   Center_Level="Low"
 else g.message -v "Flag -l not set"
 fi
 
 # h - high center cell value
-if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_L -eq 0 ]
+if [ $GIS_FLAG_H -eq 1 ] && [ $GIS_FLAG_M -eq 0 ]
   then g.message -i "Using a High center value"
   Center_Level="High"
 else g.message -v "Flag -h not set"
 fi
 
 	# conflicting flags?
-	if [ $GIS_FLAG_L -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
-	then g.message -e "Requested both a Low and a High center value for the filter! Please, instruct only one of them."
+	if [ $GIS_FLAG_M -eq 1 ] && [ $GIS_FLAG_H -eq 1 ]
+	then g.message -e "Requested both a Mid and a High center value for the filter! Please, instruct only one of them."
 	exit 1
   fi
 
@@ -257,17 +247,6 @@ fi
 
 # What was requested? ----------------------------------------------------------
 
-# Flags/Parameters
-g.message -v " "
-g.message -v "Requested parameters:"
-g.message -v "* Center Cell Level: ${Center_Level}"
-g.message -v "* Modulating Factor Level: ${Modulating_Level}"
-
-if [ $GIS_FLAG_2 -eq 1 ]
-  then g.message -i "* Modulating Factor Level_2: ${Modulator_Level_2}"
-fi
-
-
 # Input Images
 g.message -v " "
 g.message -v "Images to be fused:"
@@ -304,6 +283,18 @@ done
 # reset IFS
 IFS=${Default_IFS}
 
+# Flags/Parameters
+g.message -v " "
+g.message -v "Requested parameters:"
+g.message -v "* Center Cell Level: ${Center_Level}"
+g.message -v "* Modulating Factor Level: ${Modulating_Level}"
+
+if [ $GIS_FLAG_2 -eq 1 ]
+  then g.message -i "* Modulating Factor Level_2: ${Modulator_Level_2}"
+fi
+# ----------------------------------------------------------------------------
+
+
 
 
 # Implementation in GRASS GIS ################################################
@@ -315,6 +306,7 @@ IFS=${Default_IFS}
 
 g.message -i " "
 g.message -i "Step 1. Computing Ratio of MSX to Pan Image"
+g.message -v " "
 
 # First, check & warn user about "ns == ew" resolution of current region
 
@@ -409,9 +401,6 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   # Default will be:
 					  #   HPF_MATRIX=\
@@ -446,9 +435,6 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   fi
 
@@ -472,9 +458,6 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   fi
 
@@ -498,9 +481,6 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   fi
 
@@ -524,9 +504,6 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   fi
 
@@ -549,14 +526,17 @@ function hpf_matrix {
 
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
-  g.message -v " "
-  g.message -v "The filter is:"
-  g.message -v "${HPF_MATRIX_ASCII}"
 
   fi
 
+  g.message -v " "
+  g.message -v "* High Pass Filter created with Kernel Size \"${Kernel_Size}\" and Center Value \"${!Center_Cell}\""
+  g.message -v " "
+  g.message -v "${HPF_MATRIX_ASCII}"
+  g.message -v " "
+
   # create (temporary) filter ASCII file
-  Temporary_ASCII_HPF_Matrix_File="i.hpfsharpen.tmp.$$"
+  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.$$"
   if [ $? -ne 0 ] || [ -z "$Temporary_ASCII_HPF_Matrix_File" ]
 	then g.message -e "unable to create temporary files"
 	  exit 1
@@ -566,12 +546,9 @@ function hpf_matrix {
 
   ### ADD Additional Checks ? ###
 
-  g.message -v " "
-  g.message -v "High Pass Filter created with the following parameters:"
-  g.message -v "Kernel Size: ${Kernel_Size}; Center Value: ${!Center_Cell}"
 
   # create a temp file -- maybe I have misunderstood the use of g.tempfile!?
-  Temporary_HPF="i.hpfsharpen.tmp.$$"
+  Temporary_HPF="i.fusion.hpf.$$"
   if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -606,7 +583,7 @@ g.message -i " "
 g.message -i "Step 3. Resampling MSX image to the higher resolution"
 
   # create a temp file
-  Temporary_MSBLNR="i.hpfsharpen.tmp.$$"
+  Temporary_MSBLNR="i.fusion.hpf.$$"
   if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -636,6 +613,7 @@ g.message -i "Step 3. Resampling MSX image to the higher resolution"
 
 g.message -i " "
 g.message -i "Step 4. Adding weighted HPF image to the resampled MSX image"
+g.message -i " "
 
 
 # The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
@@ -643,8 +621,8 @@ g.message -i "Step 4. Adding weighted HPF image to the resampled MSX image"
 	# SD(MS) and SD(HPF) are the Standard Deviations of the MS and HPF images
 	# M is a Modulator value
 	
-g.message -v "        The weighting formula is: ..."
-g.message -v "Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
+g.message -v "* The weighting formula is:"
+g.message -v "  Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
 
   # get Standard Deviations
   g.message -v " "
@@ -660,14 +638,15 @@ g.message -v "Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
 	g.message -v "HPF's StdDev: ${HPF_StdDev}"
 	
 	# the modulating factor
-	g.message -v "The Modulating Factor is set to: ${!Modulating_Factor:-None}"
+	g.message -v "Modulating Factor set to: ${!Modulating_Factor:-None}"
 
   # compute weighting
   Weighting=$( echo "( ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor} )" | bc -l )
+  g.message -v " "
   g.message -v "${Weighting} = ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
 
   # create temporary file
-  Temporary_MSHPF="i.hpfsharpen.tmp.$$"
+  Temporary_MSHPF="i.fusion.hpf.$$"
   if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -691,7 +670,7 @@ g.message -v "Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
 g.message -i "Step 5. Optionally, matching histogram of Pansharpened image to the one of the original MSX image"
 g.message -i "...not implemented"
 
-# if [ $GIS_FLAG_M -eq 0 ]
+# if [ $GIS_FLAG_L -eq 0 ]
 #   then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUT_SUFFIX}
 #   else g.message -i "Matching histograms..." # linear hisogram matching to adapt output StdDev and Mean to the input-ted ones
 #   # r.mapcalc
