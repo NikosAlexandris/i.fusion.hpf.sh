@@ -1,8 +1,8 @@
 #!/bin/bash
 
 
-# Started: 29. Oct. 2013
-# Currently testing for G64
+# Started: 29. Oct. 2013 // Working state reached: 07. Nov. 2013
+# Currently working for G64
 
 
 ############################################################################
@@ -38,11 +38,20 @@
 #%  keywords: imagery, fusion, HPF, HPFA
 #%End
 #%option
+#% key: ratio
+#% type: double
+#% description: Custom defined ratio to override standard calculation 
+#% options: 1-10
+#% guisection: High Pass Filter
+#% required: no
+#%end
+#%option
 #% key: center
 #% type: string
 #% description: Center cell value of the High-Pass-Filter 
 #% descriptions: low;Low center cell value;mid;Use a Mid value for the filter's center value;high;Use a High value for the filter's center value
 #% options: low,mid,high
+#% required: yes
 #% answer: low
 #% guisection: High Pass Filter
 #% multiple : yes
@@ -53,6 +62,7 @@
 #% description: Center cell value for the second pass of the High-Pass-Filter 
 #% descriptions: low;Low center cell value;mid;Use a Mid value for the filter's center value;high;Use a High value for the filter's center value
 #% options: low,mid,high
+#% required: yes
 #% answer: low
 #% guisection: High Pass Filter
 #% multiple : yes
@@ -63,6 +73,7 @@
 #% description: Level of modulating factor to determine crispness
 #% descriptions: mid;Mid modulating factor;min;Use the Minimum modulating factor for weighting the HPF image;max;Use the Maximum modulating factor for weighting the HPF image;
 #% options: mid,min,max
+#% required: yes
 #% answer: mid
 #% guisection: High Pass Filter
 #%end
@@ -72,6 +83,7 @@
 #% description: Level of modulating factor to determine crispness for the second pass
 #% descriptions: mid;Use the Mid modulating factor 0.35 for weighting the HPF image in the 2-Pass;min;Use the Minimum modulating factor 0.25 for weighting the HPF image in the 2-Pass;max;Use the Maximum modulating factor 0.5 for weighting the HPF image in the 2-Pass;
 #% options: mid,min,max
+#% required: no
 #% answer: mid
 #% guisection: High Pass Filter
 #%end
@@ -128,7 +140,11 @@ fi
 # save default IFS
 Default_IFS=$IFS
 
-# function cleanup {
+# clean up Temporary files
+function cleantemp {
+\rm -f i.fusion.hpf.tmp.*
+}
+# function cleanregion
 #   #remove temporary region file
 #   unset WIND_OVERRIDE
 #   g.remove region="i.hpfsharpen.$TMPPID" --quiet
@@ -157,7 +173,7 @@ fi
 
 
 # Flags requesting various parameters for the HPF Matrix and the Process -----
-echo ""
+# echo ""
 
 # perform linear histogram matching?
 if [ $GIS_FLAG_L -eq 1 ]
@@ -239,28 +255,28 @@ fi
 
 # 2-pass process for large ratios  ---  FIX THIS ===============================
 if [ $GIS_FLAG_2 -eq 1 ]
-  then g.message -i "Performing a 2-pass processing -- Not Implemented!"
+  then g.message -i "2nd High-Pass filtering requested. Note, works only for Resolution Ratio > 5.5"
   
 	# center value for the second high pass filter -------------------------
 	
 	# default or low (is the same) center cell value
 	if [ $GIS_OPT_CENTER2 == "low" ]
 	then GIS_OPT_CENTER2="Default"
-	g.message "Using a Low center value [Default]"
+	g.message "Using a Low center value for the 2nd pass [Default]"
 	fi
 	
 	# mid center cell value
 	if [ $GIS_OPT_CENTER2 == "mid" ]
 	then GIS_OPT_CENTER2="Mid"
-	g.message -i "Using a Mid center value"
-	else g.message -v "Mid center value not requested"
+	g.message -i "Using a Mid center value for the 2nd pass"
+	else g.message -v "Mid center value not requested for the 2nd pass"
 	fi
 	
 	# high center cell value
 	if [ $GIS_OPT_CENTER2 == "high" ]
 	then GIS_OPT_CENTER2="High"
-	g.message -i "Using a High center value"
-	else g.message -v "High center value not requested"
+	g.message -i "Using a High center value for the 2nd pass"
+	else g.message -v "High center value not requested for the 2nd pass"
 	fi
 	
 	  # conflicting options?
@@ -283,21 +299,21 @@ if [ $GIS_FLAG_2 -eq 1 ]
 	# default or mid (is the same) modulating factor
 	if [ $GIS_OPT_MODULATOR2 == "mid" ]
 	then GIS_OPT_MODULATOR2="Default"
-	g.message -v "Using the Mid modulating factor [Default]"
+	g.message -v "Using the Mid modulating factor for the 2nd pass [Default]"
 	fi
 
 	# minimum modulating factor --------------------------------------------
 	if [ $GIS_OPT_MODULATOR2 == "min" ]
 	then GIS_OPT_MODULATOR2="Min"
-	g.message -i "Using the minimum modulating factor"
-	else g.message -v "Minimum modulating factor not requested"
+	g.message -i "Using the minimum modulating factor for the 2nd pass"
+	else g.message -v "Minimum modulating factor not requested for the 2nd pass"
 	fi
 
 	# maximum modulating factor
 	if [ $GIS_OPT_MODULATOR2 == "max" ]
 	then GIS_OPT_MODULATOR2="Max"
-	g.message -i "Using the Maximum modulating factor"
-	else g.message -v "Maximum modulating factor not requested"
+	g.message -i "Using the Maximum modulating factor for the 2nd pass"
+	else g.message -v "Maximum modulating factor not requested for the 2nd pass"
 	fi
 	
 	  # conflicting options?
@@ -377,8 +393,7 @@ fi
 
 
 g.message -i " "
-g.message -i "[1] Computing Ratio of MSX to Pan Image"
-g.message -v " "
+g.message -i "[1] Computing ratio of low to high resolution:"
 
 # First, check & warn user about "ns == ew" resolution of current region
 
@@ -401,10 +416,19 @@ eval PAN_RESOLUTION="${nsres}"
 eval `r.info ${GIS_OPT_MSX} -s | grep nsres`
 eval MSX_RESOLUTION="${nsres}"
 
-# Next, compute the Ratio of the Pan and MSX image resolutions
-RATIO=$( echo "${MSX_RESOLUTION} / ${PAN_RESOLUTION}" | bc -l )
-g.message -v "* Ratio of image resolutions is: ${RATIO}."
+# check for custom ratio, else proceed to standard computation method
+if [ ! -z $GIS_OPT_RATIO ]
 
+  then RATIO=${GIS_OPT_RATIO}
+	g.message -w "Using a custom ratio value that will override the standard method"
+  else
+
+  # Next, compute the Ratio of the Pan and MSX image resolutions
+  RATIO=$( echo "${MSX_RESOLUTION} / ${PAN_RESOLUTION}" | bc -l )
+
+fi
+
+	g.message -i " >${RATIO}<"
 
 
 
@@ -412,8 +436,7 @@ g.message -v "* Ratio of image resolutions is: ${RATIO}."
 # 2. Apply the High-pass filter to the high spatial resolution image.
 # ----------------------------------------------------------------------------
 
-g.message -i " "
-g.message -i "[2] High Pass Filtering the Pan Image"
+g.message -i "[2] High Pass Filtering the Panchromatic Image"
 
 # Respect current region -- Change the resolution
 g.region res=${PAN_RESOLUTION}
@@ -468,7 +491,7 @@ function hpf_matrix {
   eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation Factor
-  Modulator_Min=0.3	;	Modulator_Default=0.25	;	Modulator_Max=0.20
+  Modulator_Min=0.2	;	Modulator_Default=0.25	;	Modulator_Max=0.3
   eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
@@ -502,7 +525,7 @@ function hpf_matrix {
   eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
-  Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
+  Modulator_Min=0.35 ; Modulator_Default=0.50 ; Modulator_Max=0.65
   eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
@@ -525,7 +548,7 @@ function hpf_matrix {
   eval Center_Cell="Center_${GIS_OPT_CENTER}"
 
   # modulation factor
-  Modulator_Min=0.65 ; Modulator_Default=0.50 ; Modulator_Max=0.35
+  Modulator_Min=0.35 ; Modulator_Default=0.50 ; Modulator_Max=0.65
   eval Modulating_Factor="Modulator_${MODULATOR}"
 
   # the Matrix
@@ -550,7 +573,7 @@ function hpf_matrix {
   eval Center_Cell2="Center2_${GIS_OPT_CENTER2}"
 
   # modulation factor
-  Modulator_Min=1.0 ; Modulator_Default=0.65 ; Modulator_Max=0.50
+  Modulator_Min=0.5 ; Modulator_Default=0.65 ; Modulator_Max=1.0
   eval Modulating_Factor="Modulator_${MODULATOR}"
   Modulator2_Min=0.25	;	Modulator2_Default=0.35	;	Modulator2_Max=0.5
   eval Modulating_Factor2="Modulator2_${MODULATOR2}"
@@ -558,9 +581,9 @@ function hpf_matrix {
   # the Matrix
   HPF_MATRIX_ASCII=`hpf_matrix ${Kernel_Size} ${!Center_Cell}`
 
-	# the 2nd Matrix
+	# the 2nd Matrix -- note, 2-pass kernel size always =5
 	if [ $GIS_FLAG_2 -eq 1 ]
-	  then HPF_MATRIX_ASCII2=`hpf_matrix ${Kernel_Size} ${!Center_Cell2}`
+	  then HPF_MATRIX_ASCII_2=`hpf_matrix 5 ${!Center_Cell2}` 
 	fi
 
   fi
@@ -582,7 +605,7 @@ function hpf_matrix {
   eval Center_Cell2="Center2_${GIS_OPT_CENTER2}"
 
   # modulation factor
-  Modulator_Min=1.4 ; Modulator_Default=1.0 ; Modulator_Max=0.65
+  Modulator_Min=0.65 ; Modulator_Default=1.0 ; Modulator_Max=1.4
   eval Modulating_Factor="Modulator_${MODULATOR}"
   Modulator2_Min=0.25	;	Modulator2_Default=0.35	;	Modulator2_Max=0.5
   eval Modulating_Factor2="Modulator2_${MODULATOR2}"
@@ -592,7 +615,7 @@ function hpf_matrix {
   
 	# the 2nd Matrix
 	  if [ $GIS_FLAG_2 -eq 1 ]
-		then HPF_MATRIX_ASCII2=`hpf_matrix ${Kernel_Size} ${!Center_Cell2}`
+		then HPF_MATRIX_ASCII_2=`hpf_matrix 5 ${!Center_Cell2}`
 	  fi
 
   fi
@@ -613,7 +636,7 @@ function hpf_matrix {
   eval Center_Cell2="Center2_${GIS_OPT_CENTER2}"
 
   # modulation factor
-  Modulator_Min=2.0 ; Modulator_Default=1.35 ; Modulator_Max=1.0
+  Modulator_Min=1.0 ; Modulator_Default=1.35 ; Modulator_Max=2.0
   eval Modulating_Factor="Modulator_${MODULATOR}"
   Modulator2_Min=0.25	;	Modulator2_Default=0.35	;	Modulator2_Max=0.5
   eval Modulating_Factor2="Modulator2_${MODULATOR2}"
@@ -623,7 +646,7 @@ function hpf_matrix {
   
 	# the 2nd Matrix
 	if [ $GIS_FLAG_2 -eq 1 ]
-	  then HPF_MATRIX_ASCII2=`hpf_matrix ${Kernel_Size} ${!Center_Cell2}`
+	  then HPF_MATRIX_ASCII_2=`hpf_matrix 5 ${!Center_Cell2}`
 	fi
 
   fi
@@ -635,36 +658,40 @@ function hpf_matrix {
   g.message -v " "
   
 	# the 2nd Matrix
-	  if [ $GIS_FLAG_2 -eq 1 ]
+	if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
 	  then g.message -v " "
-	  g.message -v "* Second High Pass Filter created with Kernel Size \"${Kernel_Size2}\" and Center Value \"${!Center_Cell2}\""
+	  g.message -v "* Second High Pass Filter created with Kernel Size 5 and Center Value \"${!Center_Cell2}\""
 	  g.message -v " "
-	  g.message -v "${HPF_MATRIX_ASCII2}"
+	  g.message -v "${HPF_MATRIX_ASCII_2}"
 	  g.message -v " "
-	  fi
+	fi
 
 
   # create (temporary) filter ASCII file
-  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.$$"
-  if [ $? -ne 0 ] || [ -z "$Temporary_ASCII_HPF_Matrix_File" ]
-	then g.message -e "unable to create temporary files"
+  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.tmp.$$"
+
+  if [ $? -ne 0 ] || [ -z "${Temporary_ASCII_HPF_Matrix_File}" ]
+
+	then g.message -e "unable to create ascii filter files"
 	  exit 1
+
 	else echo "${HPF_MATRIX_ASCII}" > "${Temporary_ASCII_HPF_Matrix_File}"
-	  if [ $GIS_FLAG_2 -eq 1 ]
-		then Temporary_ASCII_HPF_Matrix_File_2="i.fusion.hpf.$$"
-		echo "${HPF_MATRIX_ASCII2}" > "${Temporary_ASCII_HPF_Matrix_File_2}"
-		
+	
+	  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+		then Temporary_ASCII_HPF_Matrix_File_2="i.fusion.hpf.tmp.2.$$"
+		echo "${HPF_MATRIX_ASCII_2}" > "${Temporary_ASCII_HPF_Matrix_File_2}"
 	  fi
+
   fi
 
 
   ### ADD Additional Checks ? ###
 
 
-  # create a temp file -- maybe I have misunderstood the use of g.tempfile!?
-  Temporary_HPF="i.fusion.hpf.$$"
-  if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ]
-	then g.message -e "unable to create temporary files"
+  # create a temp file 
+  Temporary_HPF="i.fusion.hpf.tmp.3.$$" # g.tempfile does not work... ?
+  if [ $? -ne 0 ] || [ -z "${Temporary_HPF}" ]
+	then g.message -e "unable to create temporary HPF files"
 	exit 1
   fi
 
@@ -688,13 +715,20 @@ function hpf_matrix {
   ###
 
   # apply a second pass
-  if [ $GIS_FLAG_2 -eq 1 ]
-	then
+  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+
+	then Temporary_HPF_2="i.fusion.hpf.tmp.4.$$" # I don't understand g.tempfile!
+	if [ $? -ne 0 ] || [ -z "${Temporary_HPF_2}" ]
+	  then g.message -e "unable to create 2nd-pass temporary HPF files"
+	  exit 1
+	fi
+	
 	r.mfilter --o \
 	input="${Temporary_HPF}" \
 	filter="${Temporary_ASCII_HPF_Matrix_File_2}" \
-	output="${Temporary_HPF}" \
+	output="${Temporary_HPF_2}" \
 	title="2-High-Pass Filtered Panchromatic Image"
+
   fi
 
 #
@@ -702,12 +736,11 @@ function hpf_matrix {
 # Note, bilinear resampling required (4 nearest neighbours)!
 # ----------------------------------------------------------------------------
 
-g.message -i " "
 g.message -i "[3] Resampling MSX image to the higher resolution"
 
   # create a temp file
-  Temporary_MSBLNR="i.fusion.hpf.$$"
-  if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ]
+  Temporary_MSBLNR="i.fusion.hpf.tmp.5.$$"
+  if [ $? -ne 0 ] || [ -z "${Temporary_MSBLNR}" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
   fi
@@ -734,9 +767,7 @@ g.message -i "[3] Resampling MSX image to the higher resolution"
 # the Multi-Spectral band.
 # ----------------------------------------------------------------------------
 
-g.message -i " "
-g.message -i "[4] Adding weighted HPF image to the resampled MSX image"
-g.message -i " "
+g.message -i "[4] Adding weighted HPF image to the upsampled MSX image"
 
 
 # The weighting formula is: W = ( SD(MS) / SD(HPF) x M )
@@ -768,40 +799,52 @@ g.message -v "  Weight = StdDev (MSX) / StdDev (HPF) * Modulating Factor"
 	g.message -v " "
 	g.message -v "${Weighting} = ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
 
-	  if [ $GIS_FLAG_2 -eq 1 ]
+	  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
 		then
+		
+		# *and* the HPF Image
+		eval `r.univar ${Temporary_HPF_2} -g | grep stddev`
+		eval HPF_StdDev_2="${stddev}"
+		g.message -v "2nd HPF's StdDev: ${HPF_StdDev_2}"
 
 		# the modulating factor 2
+		g.message -v " "
 		g.message -v "Modulating Factor for the second pass set to: ${!Modulating_Factor2:-None}"
 
-		Weighting2=$( echo "( ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor2} )" | bc -l )
+		Weighting_2=$( echo "( ${MSX_StdDev} / ${HPF_StdDev_2} * ${!Modulating_Factor2} )" | bc -l )
 		g.message -v " "
-		g.message -v "${Weighting2} = ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor2}"
+		g.message -v "${Weighting_2} = ${MSX_StdDev} / ${HPF_StdDev_2} * ${!Modulating_Factor2}"
 
 	  fi
 	
   # create temporary file
-  Temporary_MSHPF="i.fusion.hpf.$$"
-  if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ]
+  Temporary_MSHPF="i.fusion.hpf.tmp.6.$$"
+  if [ $? -ne 0 ] || [ -z "${Temporary_MSHPF}" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
   fi
 
   # Add weighted HPF image to the bilinearly resampled Multi-Spectral band
-  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ${Temporary_HPF} * double (${Weighting})"
+  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ( ${Temporary_HPF} * double (${Weighting}) )"
   
 	# check if 2nd pass applies
-	if [ $GIS_FLAG_2 -eq 1 ]
-	  then r.mapcalc --o "${Temporary_MSHPF} = ${Temporary_MSHPF} + ${Temporary_HPF} * double (${Weighting2})"
+	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	  then	g.message -i "Adding 2nd pass weighted HPF image to the upsampled MSX image"
+
+		r.mapcalc "Temporary_MSHPF = ${Temporary_MSHPF} + ( ${Temporary_HPF_2} * double (${Weighting_2}) )"
+		g.message -v "Done!"
+
 	fi
 	
 
   # write cmd history
   r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
-#   r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
-
-  if [ $GIS_FLAG_2 -eq 1 ]
-  then r.support "${Temporary_MSHPF}" history="2nd Pass Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor2}"
+# r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
+  
+  # 2nd pass history entry
+  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	then r.support "${Temporary_MSHPF}" history="2nd Pass Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev2} * ${!Modulating_Factor2}"
+  fi
 
   # Remove this! ######################################################### ###
   g.copy rast="${Temporary_MSHPF}","HPF_Sharpened_${GIS_OPT_MSX}"
@@ -829,17 +872,20 @@ g.message -i "[5] Optionally, matching histogram of Pansharpened image to the on
 #
 
 # g.message -v "Restoring region settings."
-# cleanup
-
-# Remove temporary files -- Fix This!
-# g.remove ${Temporary_HPF}
-# g.remove ${Temporary_MSBLNR}
-# g.remove ${Temporary_MSHPF}
+cleantemp
 
 
 
 #
-# Inform how to...
+# Inform (how to...)
 #
 
-# g.message -v "To visualize output, run:"
+g.message -i "The pan-sharpened image ${GIS_OPT_OUTPUT_SUFFIX} has been generated:"
+
+
+
+# visualising output
+g.message -v "It is probably required to rebalance the colors before visualising/compositing RGB images!"
+# g.message -v message="g.region -p rast=$GIS_OPT_ ; d.erase"
+# g.message -v message="d.rgb r=$GIS_OPT_ g=$GIS_OPT_ b=$GIS_OPT_"
+# g.message -v "If desired, combine channels with 'r.composite' to a single map."

@@ -16,7 +16,7 @@ imagery, fusion, HPF, HPFA
 <h2>SYNOPSIS</h2>
 <b>i.fusion.hpf</b><br>
 <b>i.fusion.hpf help</b><br>
-<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>center</b>=<em>string</em>[,<i>string</i>,...]]   [<b>modulator</b>=<em>string</em>]   [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>output_suffix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
+<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>ratio</b>=<em>float</em>]  <b>center</b>=<em>string</em>[,<i>string</i>,...] <b>center2</b>=<em>string</em>[,<i>string</i>,...] <b>modulator</b>=<em>string</em>  [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>output_suffix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
 
 <h3>Flags:</h3>
 <DL>
@@ -34,8 +34,20 @@ imagery, fusion, HPF, HPFA
 
 <h3>Parameters:</h3>
 <DL>
+<DT><b>ratio</b>=<em>float</em></DT>
+<DD>Custom defined ratio to override standard calculation</DD>
+<DD>Options: <em>1-10</em></DD>
+
 <DT><b>center</b>=<em>string[,<i>string</i>,...]</em></DT>
 <DD>Center cell value of the High-Pass-Filter</DD>
+<DD>Options: <em>low,mid,high</em></DD>
+<DD>Default: <em>low</em></DD>
+<DD><b>low</b>: Low center cell value</DD>
+<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
+<DD><b>high</b>: Use a High value for the filter's center value</DD>
+
+<DT><b>center2</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Center cell value for the second pass of the High-Pass-Filter</DD>
 <DD>Options: <em>low,mid,high</em></DD>
 <DD>Default: <em>low</em></DD>
 <DD><b>low</b>: Low center cell value</DD>
