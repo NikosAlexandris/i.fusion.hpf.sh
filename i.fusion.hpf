@@ -686,7 +686,7 @@ function hpf_matrix {
 
 
   # create (temporary) filter ASCII file
-  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.tmp.Matrix.$$"
+  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.tmp.1.$$"
 
   if [ $? -ne 0 ] || [ -z "${Temporary_ASCII_HPF_Matrix_File}" ]
 
@@ -717,7 +717,7 @@ function hpf_matrix {
 
 
   # apply filter (for G64 -- for G7 use r.mfilter?)
-  r.mfilter \
+  r.mfilter --o \
   input="${GIS_OPT_PAN}" \
   filter="${Temporary_ASCII_HPF_Matrix_File}" \
   output="${Temporary_HPF}" \
@@ -756,7 +756,7 @@ function hpf_matrix {
 
 
   # create a temp file
-  Temporary_MSBLNR="i.fusion.hpf.tmp.${MSX}.1.$$"
+  Temporary_MSBLNR="i.fusion.hpf.tmp.MSX.1.$$"
   if [ $? -ne 0 ] || [ -z "${Temporary_MSBLNR}" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -765,7 +765,7 @@ function hpf_matrix {
   g.message -i "[3] Resampling the low resolution image (${MSX}) to the higher resolution (${PAN_RESOLUTION})"
 
   # resample -- named "linear" in G7
-  r.resamp.interp \
+  r.resamp.interp --o \
   method="bilinear" \
   input="${MSX}" \
   output="${Temporary_MSBLNR}"
@@ -837,7 +837,7 @@ function hpf_matrix {
 	  fi
 	
   # create temporary file
-  Temporary_MSHPF="i.fusion.hpf.tmp.${MSX}.2.$$"
+  Temporary_MSHPF="i.fusion.hpf.tmp.MSX.2.$$"
   if [ $? -ne 0 ] || [ -z "${Temporary_MSHPF}" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -846,13 +846,13 @@ function hpf_matrix {
   g.message -i "[4] Adding weighted HPF image to the upsampled image"
 
   # Add weighted HPF image to the bilinearly resampled Multi-Spectral band
-  r.mapcalc "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ( ${Temporary_HPF} * double (${Weighting}) )"
+  r.mapcalc --o "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ( ${Temporary_HPF} * double (${Weighting}) )"
   
 	# check if 2nd pass applies
 	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
 	  then	g.message -i "Adding a 2nd pass weighted HPF image to the upsampled image"
 
-		r.mapcalc "Temporary_MSHPF = ${Temporary_MSHPF} + ( ${Temporary_HPF_2} * double (${Weighting_2}) )"
+		r.mapcalc --o "Temporary_MSHPF = ${Temporary_MSHPF} + ( ${Temporary_HPF_2} * double (${Weighting_2}) )"
 		g.message -v "Done!"
 
 	fi
