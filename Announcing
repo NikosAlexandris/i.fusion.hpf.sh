@@ -1,0 +1,58 @@
+--%<---
+"i.fusion.hpf"
+
+A custom shell script named `i.fusion.hpf` is an implementation of the High Pass Filter Additive (HPFA) Fusion Technique for Pan-Sharpening [*].  HPFA outperforms anything I have seen so far (incl. Brovey, IHS, PCA) for Pan-Sharpening Multi-Spectral data.  It simply Rocks!
+
+The script reached a working state. Almost complete. It still needs 1) an automatic looping over multiple Multi-Spectral images so as to render needless the task for manual loops and 2) a linear histogram matching option (as explained in the related publication).
+
+The replication of the HPFA fusion technique in GRASS-GIS, as well as a "filter creation" bash one-liner, was Nikos Ve's idea.
+
+
+Background
+
+The algorithm is quite simple (...who knows how many research hours it costed though):
+
+1. Computing ratio of low (Multi-Spectral) to high (Panchromatic) resolutions
+
+2. High Pass Filtering the Panchromatic Image
+
+3. Resampling MSX image to the higher resolution
+
+4. Adding weighted High-Pass-Filetred image to the upsampled MSX image
+
+5. Optionally, matching histogram of Pansharpened image to the one of the original MSX image
+
+
+Some points
+
++ Stunning!, Crisp and colorful images (- currently after applying color rebalancing manually)
+
++ Extremely easy to use, i.e.: "i.fusion.hpf pan=Pan_DNs msx=${Band}"
+
++ Grasping and testing the various parameters that define the High-Pass filter's kernel size and center value is also a matter of short time.
+
++ It will work with any kind of imagery (after minor modifications)
+
+
+- The attached script is in Bash for GRASS 64.
+
+- Badly coded by a non-programer
+
+- Currently works only for integers (with minor tweaking it can work with r.mfilter.fp to crunch Floating Points as well)
+
+- Lacks of the histogram matching operation
+
+- Needs manual looping over Multi-Spectral images of interest, or simply repeating manually the same process for each MS image
+
+
++ However, it can be easily adapted for GRASS 7 / converted to Python
+
+
+? Given that the part of the existing "i.pansharpen" code that performs histogram matching is the one that uses the Standard Deviation and Mean of the reference image, the HPFA algorithm implemented later in Python could utilise it.
+
+? Best would be if the hpfa algorithm would be integrated in i.pansharpen... ?
+
+[*] Optimizing the High-Pass Filter Addition Technique for Image Fusion (2008) by Ute G. Gangkofner, Pushkar S. Pradhan, and Derrold W. Holcomb
+
+
+Nikos
