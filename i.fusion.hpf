@@ -686,7 +686,7 @@ function hpf_matrix {
 
 
   # create (temporary) filter ASCII file
-  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.tmp.1.$$"
+  Temporary_ASCII_HPF_Matrix_File="i.fusion.hpf.tmp.MATRIX.1"
 
   if [ $? -ne 0 ] || [ -z "${Temporary_ASCII_HPF_Matrix_File}" ]
 
@@ -696,7 +696,7 @@ function hpf_matrix {
 	else echo "${HPF_MATRIX_ASCII}" > "${Temporary_ASCII_HPF_Matrix_File}"
 	
 	  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
-		then Temporary_ASCII_HPF_Matrix_File_2="i.fusion.hpf.tmp.2.$$"
+		then Temporary_ASCII_HPF_Matrix_File_2="i.fusion.hpf.tmp.MATRIX.2"
 		echo "${HPF_MATRIX_ASCII_2}" > "${Temporary_ASCII_HPF_Matrix_File_2}"
 	  fi
 
@@ -707,8 +707,8 @@ function hpf_matrix {
 
 
   # create a temp file 
-  Temporary_HPF="i.fusion.hpf.tmp.HPF.1.$$" # g.tempfile does not work... ?
-  if [ $? -ne 0 ] || [ -z "${Temporary_HPF}" ]
+  Temporary_HPF="i.fusion.hpf.tmp.HPF.1" # g.tempfile does not work... ?
+  if [ $? -ne 0 ] || [ -z "$Temporary_HPF" ]
 	then g.message -e "unable to create temporary HPF files"
 	exit 1
   fi
@@ -718,9 +718,9 @@ function hpf_matrix {
 
   # apply filter (for G64 -- for G7 use r.mfilter?)
   r.mfilter --o \
-  input="${GIS_OPT_PAN}" \
-  filter="${Temporary_ASCII_HPF_Matrix_File}" \
-  output="${Temporary_HPF}" \
+  input="$GIS_OPT_PAN" \
+  filter="$Temporary_ASCII_HPF_Matrix_File" \
+  output="$Temporary_HPF" \
   title="High Pass Filtered Panchromatic Image"
 
   # write cmd history
@@ -729,22 +729,22 @@ function hpf_matrix {
 # r.support "$GIS_OPT_" history="${CMDLINE}"
 
   # Remove this! ######################################################### ###
-#   g.copy rast="${Temporary_HPF}","HPF_Filtered_${GIS_OPT_PAN}"
+#   g.copy rast="$Temporary_HPF","HPF_Filtered_${GIS_OPT_PAN}"
   ###
 
   # apply a second pass
   if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
 
-	then Temporary_HPF_2="i.fusion.hpf.tmp.HPF.2.$$" # I don't understand g.tempfile!
-	if [ $? -ne 0 ] || [ -z "${Temporary_HPF_2}" ]
+	then Temporary_HPF_2="i.fusion.hpf.tmp.HPF.2" # I don't understand g.tempfile!
+	if [ $? -ne 0 ] || [ -z "$Temporary_HPF_2" ]
 	  then g.message -e "unable to create 2nd-pass temporary HPF files"
 	  exit 1
 	fi
 	
 	r.mfilter --o \
-	input="${Temporary_HPF}" \
-	filter="${Temporary_ASCII_HPF_Matrix_File_2}" \
-	output="${Temporary_HPF_2}" \
+	input="$Temporary_HPF" \
+	filter="$Temporary_ASCII_HPF_Matrix_File_2" \
+	output="$Temporary_HPF_2" \
 	title="2-High-Pass Filtered Panchromatic Image"
 
   fi
@@ -756,7 +756,7 @@ function hpf_matrix {
 
 
   # create a temp file
-  Temporary_MSBLNR="i.fusion.hpf.tmp.MSX.1.$$"
+  Temporary_MSBLNR="i.fusion.hpf.tmp.MSBLNR"
   if [ $? -ne 0 ] || [ -z "${Temporary_MSBLNR}" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
@@ -767,16 +767,16 @@ function hpf_matrix {
   # resample -- named "linear" in G7
   r.resamp.interp --o \
   method="bilinear" \
-  input="${MSX}" \
-  output="${Temporary_MSBLNR}"
+  input="$MSX" \
+  output="$Temporary_MSBLNR"
 
   # write cmd history
 # r.support "" history="${CMDLINE}"
-  r.support "${Temporary_MSBLNR}" history="${CMDLINE}"
+#   r.support "${Temporary_MSBLNR}" history="${CMDLINE}"
 # r.support "$GIS_OPT_" history="${CMDLINE}"
 
   # Remove this! ######################################################### ###
-  g.copy rast="${Temporary_MSBLNR}","HPF_Upsampled_${MSX}"
+#   g.copy --o rast="${Temporary_MSBLNR}","HPF_Upsampled_${MSX}"
   ###
 
 
@@ -798,22 +798,22 @@ function hpf_matrix {
 	# get Standard Deviations
 	
 	# of Multi-Spectral Image(s)
-	eval `r.univar ${MSX} -g | grep stddev`
-	eval MSX_StdDev="${stddev}"
+	eval `r.univar $MSX -g | grep stddev`
+	eval MSX_StdDev="$stddev"
 	g.message -v "* StdDev of Multi-Spectral input: ${MSX_StdDev}"
 
 	# *and* the HPF Image
-	eval `r.univar ${Temporary_HPF} -g | grep stddev`
-	eval HPF_StdDev="${stddev}"
+	eval `r.univar $Temporary_HPF -g | grep stddev`
+	eval HPF_StdDev="$stddev"
 	g.message -v "* StdDev of High-Pass Filtered image: ${HPF_StdDev}"
 	
 	# the modulating factor
 	g.message -v "* Modulating Factor set to: ${!Modulating_Factor:-None}"
 
-	Weighting=$( echo "( ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor} )" | bc -l )
+	Weighting=$( echo "( $MSX_StdDev / $HPF_StdDev * ${!Modulating_Factor} )" | bc -l )
 
 # 	g.message -v "${Weighting} = ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
-	g.message -v "* Weighting = ${Weighting}"
+	g.message -v "* Weighting = $Weighting"
 	g.message -v " "
 	
 
@@ -822,38 +822,72 @@ function hpf_matrix {
 		then
 		
 		# *and* the HPF Image
-		eval `r.univar ${Temporary_HPF_2} -g | grep stddev`
-		eval HPF_StdDev_2="${stddev}"
-		g.message -v "* StdDev of 2nd HPF image: ${HPF_StdDev_2}"
+		eval `r.univar $Temporary_HPF_2 -g | grep stddev`
+		eval HPF_StdDev_2="$stddev"
+		g.message -v "* StdDev of 2nd HPF image: $HPF_StdDev_2"
 
 		# the modulating factor 2
 		g.message -v "* Modulating Factor for the second pass set to: ${!Modulating_Factor2:-None}"
 
-		Weighting_2=$( echo "( ${MSX_StdDev} / ${HPF_StdDev_2} * ${!Modulating_Factor2} )" | bc -l )
+		Weighting_2=$( echo "( $MSX_StdDev / $HPF_StdDev_2 * ${!Modulating_Factor2} )" | bc -l )
 # 		g.message -v "${Weighting_2} = ${MSX_StdDev} / ${HPF_StdDev_2} * ${!Modulating_Factor2}"
-		g.message -v "* 2nd Pass Weighting = ${Weighting_2}"
+		g.message -v "* 2nd Pass Weighting = $Weighting_2"
 		g.message -v " "
 
 	  fi
 	
   # create temporary file
-  Temporary_MSHPF="i.fusion.hpf.tmp.MSX.2.$$"
-  if [ $? -ne 0 ] || [ -z "${Temporary_MSHPF}" ]
+  Temporary_MSHPF=`g.tempfile pid=$$`
+  if [ $? -ne 0 ] || [ -z "$Temporary_MSHPF" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
   fi
 
   g.message -i "[4] Adding weighted HPF image to the upsampled image"
 
+
+### Check if in inputs for the following operation exist! ####################
+
+# 1. Temporary_MSBLNR
+
+  eval `g.findfile element=cell file="$Temporary_MSBLNR"`
+  if [ -z "$name" ]
+	then g.message -e "can't find the temporary image <$Temporary_MSBLNR>!"
+	  exit 1
+	else g.message -v " * Temporary Resampled MSX image:	$Temporary_MSBLNR"
+  fi
+
+# 2. Temporary_HPF
+
+  eval `g.findfile element=cell file="$Temporary_HPF"`
+  if [ -z "$name" ]
+	then g.message -e "can't find the temporary image <$Temporary_HPF>!"
+	  exit 1
+	else g.message -v " * Temporary HPF image:	$Temporary_HPF"
+  fi
+
+# 3. Weighting
+
+  if [ -z "$Weighting" ]
+	then g.message -e "can't find the weighted variable <Weighting>!"
+	  exit 1
+	else g.message -v " * Weighting variable:	$Weighting"
+  fi
+
+##############################################################################
+
+
+
   # Add weighted HPF image to the bilinearly resampled Multi-Spectral band
-  r.mapcalc --o "${Temporary_MSHPF} = ${Temporary_MSBLNR} + ( ${Temporary_HPF} * double (${Weighting}) )"
+  r.mapcalc --o "$Temporary_MSHPF = $Temporary_MSBLNR + $Temporary_HPF * double($Weighting)"
+  g.message -v "HPF image added to the bilinearly resampled MSX image."
   
 	# check if 2nd pass applies
 	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
 	  then	g.message -i "Adding a 2nd pass weighted HPF image to the upsampled image"
 
-		r.mapcalc --o "Temporary_MSHPF = ${Temporary_MSHPF} + ( ${Temporary_HPF_2} * double (${Weighting_2}) )"
-		g.message -v "Done!"
+		r.mapcalc --o "$Temporary_MSHPF = $Temporary_MSHPF + ( $Temporary_HPF_2 * double($Weighting_2) )"
+		g.message -v "2nd pass performed successfuly!"
 
 	fi
 	
@@ -906,7 +940,7 @@ done #########################################################################
 #
 
 # g.message -v "Restoring region settings."
-cleantemp
+# cleantemp
 
 # and
 # g.remove rast=Temporary_MSHPF

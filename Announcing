@@ -42,8 +42,6 @@ Some points
 
 - Lacks of the histogram matching operation
 
-- Needs manual looping over Multi-Spectral images of interest, or simply repeating manually the same process for each MS image
-
 
 + However, it can be easily adapted for GRASS 7 / converted to Python
 
