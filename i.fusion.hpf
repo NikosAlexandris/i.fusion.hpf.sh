@@ -203,7 +203,7 @@ fi
 
   # conflicting options?
 
-	  # set to comma =============================================================
+	  # set to comma =========================================================
 	  IFS=,
 	  
 	  # count options  
@@ -213,7 +213,7 @@ fi
 	  exit 1
 	  fi
 	  
-	  # reset IFS ================================================================
+	  # reset IFS ============================================================
 	  IFS=${Default_IFS}
 
 
@@ -254,7 +254,7 @@ fi
 
 
 
-# 2-pass process for large ratios  ---  FIX THIS ===============================
+# 2-pass process for large ratios  ---  FIX THIS =============================
 if [ $GIS_FLAG_2 -eq 1 ]
   then g.message -i " > 2nd Pass requested. Note, works only for Resolution Ratio > 5.5"
   
@@ -334,7 +334,7 @@ if [ $GIS_FLAG_2 -eq 1 ]
 
 fi
 
-# ==============================================================================
+# ============================================================================
 
 # What was requested? --------------------------------------------------------
 
@@ -920,7 +920,7 @@ cleantemp
 
 # visualising output
 g.message -i " "
-g.message -i "> Note, it is probably required to rebalance the colors before visualising/compositing RGB images!"
-# g.message -v message="g.region -p rast=$GIS_OPT_ ; d.erase"
-# g.message -v message="d.rgb r=$GIS_OPT_ g=$GIS_OPT_ b=$GIS_OPT_"
+g.message -i "> Note, it is probably required to rebalance colors (using i.landsat.rgb) before visualising/compositing RGB images!"
+
+# g.message -v message="i.landsat.rgb r=$GIS_OPT_ g=$GIS_OPT_ b=$GIS_OPT_"
 # g.message -v "If desired, combine channels with 'r.composite' to a single map."
