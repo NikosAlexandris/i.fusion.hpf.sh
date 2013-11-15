@@ -111,12 +111,12 @@
 #% multiple: yes
 #%end
 #%option
-#% key: output_suffix
+#% key: outputprefix
 #% type: string
 #% gisprompt: old,double,raster
 #% description: HPF Pan-Sharpened Multi-Spectral image(s)
 #% required: yes
-#% answer: HPF_Sharpened
+#% answer: hpf
 #%end
 
 # Various checks -------------------------------------------------------------
@@ -855,7 +855,7 @@ function hpf_matrix {
 
 	fi
 	
-	g.copy --q rast=$Temporary_MSHPF,HPF_Sharpened_${MSX}
+	g.copy --q rast=$Temporary_MSHPF,${GIS_OPT_OUTPUTPREFIX}_${MSX}
 	
 
   # write cmd history
@@ -877,15 +877,15 @@ function hpf_matrix {
 g.message -v "5 Linearly matching histogram of the >${GIS_OPT_PAN}< to the >${MSX}< image [Not Implemented!]"
 
 # if [ $GIS_FLAG_L -eq 0 ]
-  #   then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUT_SUFFIX}
+  #   then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX}
   #   else g.message -i "Matching histograms..." # linear hisogram matching to adapt output StdDev and Mean to the input-ted ones
   #   # r.mapcalc
   #   # input=${Temporary_MSHPF} \
-  #   # output=${GIS_OPT_MSX}_${GIS_OPT_OUTPUT_SUFFIX} \
+  #   # output=${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX} \
 # fi
 
 # g.message -i " "
-g.message -i ">> Pan-sharpened image named \"HPF_Sharpened_${MSX}\""
+g.message -i ">> Pan-sharpened image named \"${GIS_OPT_OUTPUTPREFIX}_${MSX}\""
 
 
 # Closing up big loop over multiple MSX images ###############################
