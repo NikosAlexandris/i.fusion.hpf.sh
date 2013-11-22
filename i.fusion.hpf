@@ -142,7 +142,7 @@ Default_IFS=$IFS
 
 # clean up Temporary files
 function cleantemp {
-#\rm -f i.fusion.hpf.tmp.*
+\rm -f i.fusion.hpf.tmp.*
 g.mremove rast=i.fusion.hpf.tmp* -f
 }
 # function cleanregion
@@ -397,7 +397,7 @@ for MSX in `echo $GIS_OPT_MSX | tr "," "\ "` #################################
 ##############################################################################
 
 g.message -i " "
-g.message -i "> Processing the image: ${MSX}"
+g.message -i "> Processing image: ${MSX}"
 g.message -v " "
 
 
@@ -446,7 +446,7 @@ fi
 
 
 # 2nd pass requested but Ration < 5.5
-if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "${RATIO} < 5.5" | bc ) -eq 1 ]]
+if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "$RATIO < 5.5" | bc ) -eq 1 ]]
   then g.message -i " * Ratio < 5.5 -- wont apply a 2nd pass!"
 fi
 
@@ -477,14 +477,14 @@ function hpf_matrix {
 
   # Construct the Row for Cols 1 to "Matrix_Dimension"
   function hpf_row {
-	for Column in `seq ${Matrix_Dimension}`
+	for Column in `seq $Matrix_Dimension`
 	  do echo -n "$(hpf_cell_value)"
 	done
   }
 
   # Construct the Matrix
-  echo "MATRIX    ${Matrix_Dimension}"
-  for Row in `seq ${Matrix_Dimension}`
+  echo "MATRIX    $Matrix_Dimension"
+  for Row in `seq $Matrix_Dimension`
   	do echo "$(hpf_row)"
   done
   echo "DIVISOR   1"
@@ -497,8 +497,8 @@ function hpf_matrix {
 
   # 1 < RATIO < 2.5 then 5x5
   if
-  [[ $( echo "1 < ${RATIO}" | bc ) -eq 1 ]] && \
-	[[ $( echo "${RATIO} < 2.5" | bc ) -eq 1 ]]
+  [[ $( echo "1 < $RATIO" | bc ) -eq 1 ]] && \
+	[[ $( echo "$RATIO < 2.5" | bc ) -eq 1 ]]
 
   then
 
@@ -532,8 +532,8 @@ function hpf_matrix {
   # 2.5 <= RATIO < 3.5 then 7x7
   if
 
-  [[ $( echo "2.5 < ${RATIO}" | bc ) -eq 1 ]] && \
-	[[ $( echo "${RATIO} < 3.5" | bc ) -eq 1 ]]
+  [[ $( echo "2.5 < $RATIO" | bc ) -eq 1 ]] && \
+	[[ $( echo "$RATIO < 3.5" | bc ) -eq 1 ]]
   then
 
   # kernel size
@@ -555,8 +555,8 @@ function hpf_matrix {
   # 3.5 <= RATIO < 5.5 then 9x9
   if
 
-  [[ $( echo "3.5 < ${RATIO}" | bc ) -eq 1 ]] && \
-	[[ $( echo "${RATIO} < 5.5" | bc ) -eq 1 ]]
+  [[ $( echo "3.5 < $RATIO" | bc ) -eq 1 ]] && \
+	[[ $( echo "$RATIO < 5.5" | bc ) -eq 1 ]]
   then
 
   # kernel size
@@ -578,8 +578,8 @@ function hpf_matrix {
   # 5.5 <= RATIO < 7.5 then 11x11
   if
 
-  [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]] && \
-	[[ $( echo "${RATIO} < 7.5" | bc ) -eq 1 ]]
+  [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]] && \
+	[[ $( echo "$RATIO < 7.5" | bc ) -eq 1 ]]
   then
 
   # kernel size
@@ -610,8 +610,8 @@ function hpf_matrix {
   # 7.5 <= RATIO < 9.5 then 13x13
   if
 
-  [[ $( echo "7.5 < ${RATIO}" | bc ) -eq 1 ]] && \
-	[[ $( echo "${RATIO} < 9.5" | bc ) -eq 1 ]]
+  [[ $( echo "7.5 < $RATIO" | bc ) -eq 1 ]] && \
+	[[ $( echo "$RATIO < 9.5" | bc ) -eq 1 ]]
   then
 
   # kernel size
@@ -642,7 +642,7 @@ function hpf_matrix {
   # RATIO >= 9.5 then 15x15
   if
 
-  [[ $( echo "9.5 <= ${RATIO}" | bc ) -eq 1 ]]
+  [[ $( echo "9.5 <= $RATIO" | bc ) -eq 1 ]]
   then
 
   # kernel size
@@ -677,7 +677,7 @@ function hpf_matrix {
   g.message -v " "
   
 	# the 2nd Matrix
-	if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 	  then g.message -v " "
 	  g.message -v " > Second High Pass Filtering (Sequential Add-Back)"
 	  
@@ -698,7 +698,7 @@ function hpf_matrix {
 
 	else echo "${HPF_MATRIX_ASCII}" > "${Temporary_ASCII_HPF_Matrix_File}"
 	
-	  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 		then Temporary_ASCII_HPF_Matrix_File_2="i.fusion.hpf.tmp.MATRIX.2"
 		echo "${HPF_MATRIX_ASCII_2}" > "${Temporary_ASCII_HPF_Matrix_File_2}"
 	  fi
@@ -732,7 +732,7 @@ function hpf_matrix {
 # r.support "$GIS_OPT_" history="${CMDLINE}"
 
   # apply a second pass
-  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+  if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 
 	then Temporary_HPF_2="i.fusion.hpf.tmp.HPF.2" # I don't understand g.tempfile!
 	if [ $? -ne 0 ] || [ -z "$Temporary_HPF_2" ]
@@ -756,12 +756,12 @@ function hpf_matrix {
 
   # create a temp file
   Temporary_MSBLNR="i.fusion.hpf.tmp.MSBLNR"
-  if [ $? -ne 0 ] || [ -z "${Temporary_MSBLNR}" ]
+  if [ $? -ne 0 ] || [ -z "$Temporary_MSBLNR" ]
 	then g.message -e "unable to create temporary files"
 	exit 1
   fi
 
-  g.message -v "3 Upsampling the low resolution image (${MSX}) to the higher resolution (${PAN_RESOLUTION})"
+  g.message -v "3 Upsampling the low resolution image ($MSX) to the higher resolution ($PAN_RESOLUTION)"
 
   # resample -- named "linear" in G7
   r.resamp.interp --o --q \
@@ -813,7 +813,7 @@ function hpf_matrix {
 	
 
 	  # 2nd pass...
-	  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 		then
 		
 		# *and* the HPF Image
@@ -847,7 +847,7 @@ function hpf_matrix {
   g.message -v "HPF image added to the bilinearly resampled MSX image."
   
 	# check if 2nd pass applies
-	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 	  then	g.message -i "Adding a 2nd pass weighted HPF image to the upsampled image"
 
 		r.mapcalc "$Temporary_MSHPF = $Temporary_MSHPF + ( $Temporary_HPF_2 * double($Weighting_2) )"
@@ -863,7 +863,7 @@ function hpf_matrix {
 # r.support "${Temporary_MSHPF}" history="Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev} * ${!Modulating_Factor}"
   
   # 2nd pass history entry
-  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < ${RATIO}" | bc ) -eq 1 ]]
+  if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 	then r.support "${Temporary_MSHPF}" history="2nd Pass Weigthing applied: ${MSX_StdDev} / ${HPF_StdDev2} * ${!Modulating_Factor2}"
   fi
 

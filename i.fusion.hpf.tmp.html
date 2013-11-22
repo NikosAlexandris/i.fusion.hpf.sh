@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>GRASS GIS manual: i.fusion.hpf</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<link rel="stylesheet" href="grassdocs.css" type="text/css">
+</head>
+<body bgcolor="white">
+
+<img src="grass_logo.png" alt="GRASS logo"><hr align=center size=6 noshade>
+
+<h2>NAME</h2>
+<em><b>i.fusion.hpf</b></em>  - Fuses a High-Resolution Panchromatic with its corresponding Low Resolution Multi-Spectral image based on the High-Pass Filter Addition technique
+<h2>KEYWORDS</h2>
+imagery, fusion, HPF, HPFA
+<h2>SYNOPSIS</h2>
+<b>i.fusion.hpf</b><br>
+<b>i.fusion.hpf help</b><br>
+<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>ratio</b>=<em>float</em>]  <b>center</b>=<em>string</em>[,<i>string</i>,...] <b>center2</b>=<em>string</em>[,<i>string</i>,...] <b>modulator</b>=<em>string</em>  [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>outputprefix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
+
+<h3>Flags:</h3>
+<DL>
+<DT><b>-l</b></DT>
+<DD>Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)</DD>
+
+<DT><b>-2</b></DT>
+<DD>2-Pass Processing (recommended) for large Resolution Ratio (>=5.5)</DD>
+
+<DT><b>--verbose</b></DT>
+<DD>Verbose module output</DD>
+<DT><b>--quiet</b></DT>
+<DD>Quiet module output</DD>
+</DL>
+
+<h3>Parameters:</h3>
+<DL>
+<DT><b>ratio</b>=<em>float</em></DT>
+<DD>Custom defined ratio to override standard calculation</DD>
+<DD>Options: <em>1-10</em></DD>
+
+<DT><b>center</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Center cell value of the High-Pass-Filter</DD>
+<DD>Options: <em>low,mid,high</em></DD>
+<DD>Default: <em>low</em></DD>
+<DD><b>low</b>: Low center cell value</DD>
+<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
+<DD><b>high</b>: Use a High value for the filter's center value</DD>
+
+<DT><b>center2</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Center cell value for the second pass of the High-Pass-Filter</DD>
+<DD>Options: <em>low,mid,high</em></DD>
+<DD>Default: <em>low</em></DD>
+<DD><b>low</b>: Low center cell value</DD>
+<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
+<DD><b>high</b>: Use a High value for the filter's center value</DD>
+
+<DT><b>modulator</b>=<em>string</em></DT>
+<DD>Level of modulating factor to determine crispness</DD>
+<DD>Options: <em>mid,min,max</em></DD>
+<DD>Default: <em>mid</em></DD>
+<DD><b>mid</b>: Mid modulating factor</DD>
+<DD><b>min</b>: Use the Minimum modulating factor for weighting the HPF image</DD>
+<DD><b>max</b>: Use the Maximum modulating factor for weighting the HPF image</DD>
+
+<DT><b>modulator2</b>=<em>string</em></DT>
+<DD>Level of modulating factor to determine crispness for the second pass</DD>
+<DD>Options: <em>mid,min,max</em></DD>
+<DD>Default: <em>mid</em></DD>
+<DD><b>mid</b>: Use the Mid modulating factor 0.35 for weighting the HPF image in the 2-Pass</DD>
+<DD><b>min</b>: Use the Minimum modulating factor 0.25 for weighting the HPF image in the 2-Pass</DD>
+<DD><b>max</b>: Use the Maximum modulating factor 0.5 for weighting the HPF image in the 2-Pass</DD>
+
+<DT><b>pan</b>=<em>string</em></DT>
+<DD>High resolution Panchromatic image for sharpening multi-spectral image</DD>
+
+<DT><b>msx</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Multi-Spectral image(s) to be pan-sharpened</DD>
+
+<DT><b>outputprefix</b>=<em>string</em></DT>
+<DD>HPF Pan-Sharpened Multi-Spectral image(s)</DD>
+<DD>Default: <em>hpf</em></DD>
+
+</DL>
+# ToDo
+
+# HPF Resolution Merge  --- Attempt to replicate in GRASS GIS
+
+  # Function to combine high-resolution panchromatic data with lower resolution
+  # multispectral data, resulting in an output with both excellent detail and
+  # a realistic representation of original multispectral scene colors.
+  
+  # The process involves a convolution using a High Pass Filter (HPF) on the
+  # high resolution data, then combining this with the lower resolution
+  # multispectral data. Read the description of the Algorithm below.
+  
+  # Source: "Optimizing the High-Pass Filter Addition Technique for Image Fusion"
+  # Ute G. Gangkofner, Pushkar S. Pradhan, and Derrold W. Holcomb (2008)
+
+
+
+# The general algorithm is:
+
+  # 1. Read pixel sizes from Image files and calculate R, the ratio of
+  # multispectral cell size to high-resolution cell size
+  
+  # 2. Apply the High-pass filter to the high spatial resolution image.
+  
+  # 3. Resample the Multi-Spectral image to the pixel size of the high-pass image.
+  # Note, bilinear resampling required (4 nearest neighbours)!
+  
+  # 4. Add the HPF image weighted relative to the global standard deviation of
+  # the Multi-Spectral band.
+  
+  # 5. Optionally, stretch linearly the new HPF-Sharpened image to match the mean and
+  # standard deviation of the input Multi-Sectral image.
+<HR>
+<P><a href="index.html">Main index</a> - <a href="imagery.html">imagery index</a> - <a href="full_index.html">Full index</a></P>
+<P>&copy; 2003-2013 <a href="http://grass.osgeo.org">GRASS Development Team</a></p>
+</body>
+</html>
