@@ -16,7 +16,7 @@ imagery, fusion, HPF, HPFA
 <h2>SYNOPSIS</h2>
 <b>i.fusion.hpf</b><br>
 <b>i.fusion.hpf help</b><br>
-<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>ratio</b>=<em>float</em>]  <b>center</b>=<em>string</em>[,<i>string</i>,...] <b>center2</b>=<em>string</em>[,<i>string</i>,...] <b>modulator</b>=<em>string</em>  [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>outputprefix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
+<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>ratio</b>=<em>float</em>]  <b>center</b>=<em>string</em>  [<b>center2</b>=<em>string</em>]  <b>modulator</b>=<em>string</em>  [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>outputprefix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
 
 <h3>Flags:</h3>
 <DL>
@@ -38,46 +38,46 @@ imagery, fusion, HPF, HPFA
 <DD>Custom defined ratio to override standard calculation</DD>
 <DD>Options: <em>1-10</em></DD>
 
-<DT><b>center</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DT><b>center</b>=<em>string</em></DT>
 <DD>Center cell value of the High-Pass-Filter</DD>
 <DD>Options: <em>low,mid,high</em></DD>
 <DD>Default: <em>low</em></DD>
 <DD><b>low</b>: Low center cell value</DD>
-<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
-<DD><b>high</b>: Use a High value for the filter's center value</DD>
+<DD><b>mid</b>: Mid center value</DD>
+<DD><b>high</b>: High center value</DD>
 
-<DT><b>center2</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DT><b>center2</b>=<em>string</em></DT>
 <DD>Center cell value for the second pass of the High-Pass-Filter</DD>
 <DD>Options: <em>low,mid,high</em></DD>
 <DD>Default: <em>low</em></DD>
 <DD><b>low</b>: Low center cell value</DD>
-<DD><b>mid</b>: Use a Mid value for the filter's center value</DD>
-<DD><b>high</b>: Use a High value for the filter's center value</DD>
+<DD><b>mid</b>: Mid center value</DD>
+<DD><b>high</b>: High center value</DD>
 
 <DT><b>modulator</b>=<em>string</em></DT>
-<DD>Level of modulating factor to determine crispness</DD>
-<DD>Options: <em>mid,min,max</em></DD>
+<DD>Level of modulating factor weighting the HPF image to determine crispness</DD>
+<DD>Options: <em>min,mid,max</em></DD>
 <DD>Default: <em>mid</em></DD>
+<DD><b>min</b>: Minimum modulating factor</DD>
 <DD><b>mid</b>: Mid modulating factor</DD>
-<DD><b>min</b>: Use the Minimum modulating factor for weighting the HPF image</DD>
-<DD><b>max</b>: Use the Maximum modulating factor for weighting the HPF image</DD>
+<DD><b>max</b>: Maximum modulating factor</DD>
 
 <DT><b>modulator2</b>=<em>string</em></DT>
-<DD>Level of modulating factor to determine crispness for the second pass</DD>
-<DD>Options: <em>mid,min,max</em></DD>
+<DD>Level of modulating factor weighting the HPF image in the second pass to determine crispness</DD>
+<DD>Options: <em>min,mid,max</em></DD>
 <DD>Default: <em>mid</em></DD>
-<DD><b>mid</b>: Use the Mid modulating factor 0.35 for weighting the HPF image in the 2-Pass</DD>
-<DD><b>min</b>: Use the Minimum modulating factor 0.25 for weighting the HPF image in the 2-Pass</DD>
-<DD><b>max</b>: Use the Maximum modulating factor 0.5 for weighting the HPF image in the 2-Pass</DD>
+<DD><b>min</b>: Minimum modulating factor (0.25) for the 2nd pass</DD>
+<DD><b>mid</b>: Mid modulating factor (0.35) for the 2nd pass</DD>
+<DD><b>max</b>: Maximum modulating factor (0.5) for 2nd pass</DD>
 
 <DT><b>pan</b>=<em>string</em></DT>
-<DD>High resolution Panchromatic image for sharpening multi-spectral image</DD>
+<DD>High resolution Panchromatic image</DD>
 
 <DT><b>msx</b>=<em>string[,<i>string</i>,...]</em></DT>
-<DD>Multi-Spectral image(s) to be pan-sharpened</DD>
+<DD>Multi-Spectral image(s)</DD>
 
 <DT><b>outputprefix</b>=<em>string</em></DT>
-<DD>HPF Pan-Sharpened Multi-Spectral image(s)</DD>
+<DD>Prefix for the Pan-Sharpened Multi-Spectral image(s)</DD>
 <DD>Default: <em>hpf</em></DD>
 
 </DL>
