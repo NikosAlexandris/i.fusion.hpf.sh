@@ -16,7 +16,7 @@ imagery, fusion, HPF, HPFA
 <h2>SYNOPSIS</h2>
 <b>i.fusion.hpf</b><br>
 <b>i.fusion.hpf help</b><br>
-<b>i.fusion.hpf</b> [-<b>l2</b>]  [<b>ratio</b>=<em>float</em>]  <b>center</b>=<em>string</em>  [<b>center2</b>=<em>string</em>]  <b>modulator</b>=<em>string</em>  [<b>modulator2</b>=<em>string</em>]  <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>outputprefix</b>=<em>string</em>  [--<b>verbose</b>]  [--<b>quiet</b>] 
+<b>i.fusion.hpf</b> [-<b>l2</b>] <b>pan</b>=<em>string</em> <b>msx</b>=<em>string</em>[,<i>string</i>,...] <b>outputprefix</b>=<em>string</em>  [<b>ratio</b>=<em>float</em>]   [<b>center</b>=<em>string</em>]   [<b>center2</b>=<em>string</em>]   [<b>modulator</b>=<em>string</em>]   [<b>modulator2</b>=<em>string</em>]   [--<b>verbose</b>]  [--<b>quiet</b>] 
 
 <h3>Flags:</h3>
 <DL>
@@ -34,6 +34,16 @@ imagery, fusion, HPF, HPFA
 
 <h3>Parameters:</h3>
 <DL>
+<DT><b>pan</b>=<em>string</em></DT>
+<DD>High resolution panchromatic image</DD>
+
+<DT><b>msx</b>=<em>string[,<i>string</i>,...]</em></DT>
+<DD>Low resolution multi-spectral image(s)</DD>
+
+<DT><b>outputprefix</b>=<em>string</em></DT>
+<DD>Prefix for the Pan-Sharpened Multi-Spectral image(s)</DD>
+<DD>Default: <em>hpf</em></DD>
+
 <DT><b>ratio</b>=<em>float</em></DT>
 <DD>Custom defined ratio to override standard calculation</DD>
 <DD>Options: <em>1-10</em></DD>
@@ -69,16 +79,6 @@ imagery, fusion, HPF, HPFA
 <DD><b>min</b>: Minimum modulating factor (0.25) for the 2nd pass</DD>
 <DD><b>mid</b>: Mid modulating factor (0.35) for the 2nd pass</DD>
 <DD><b>max</b>: Maximum modulating factor (0.5) for 2nd pass</DD>
-
-<DT><b>pan</b>=<em>string</em></DT>
-<DD>High resolution Panchromatic image</DD>
-
-<DT><b>msx</b>=<em>string[,<i>string</i>,...]</em></DT>
-<DD>Multi-Spectral image(s)</DD>
-
-<DT><b>outputprefix</b>=<em>string</em></DT>
-<DD>Prefix for the Pan-Sharpened Multi-Spectral image(s)</DD>
-<DD>Default: <em>hpf</em></DD>
 
 </DL>
 # ToDo

@@ -8,8 +8,10 @@
 ############################################################################
 #
 # MODULE:       i.fusion.hpf
+#
 # AUTHOR(S):    Nikos Alexandris <nik@nikosalexandris.net>
 #				Nikos Ves <vesnikos@gmail.com>
+#
 # PURPOSE:		HPF Resolution Merge -- Algorithm Replication in GRASS GIS
 #
 # 				Module to combine high-resolution panchromatic data with
@@ -20,6 +22,12 @@
 # 				The process involves a convolution using a High Pass Filter
 # 				(HPF) on the high resolution data, then combining this with
 # 				the lower resolution multispectral data.
+#
+#				Optionally, a linear histogram matching technique is performed
+#				in a  way that matches the resulting Pan-Sharpened imaged to
+#				them statistical mean and standard deviation of the original
+#				multi-spectral image. Credits for how to implement this
+#				technique go to	GRASS-GIS developer Moritz Lennert.
 #
 # 				Source: "Optimizing the High-Pass Filter Addition Technique for
 # 				Image Fusion", Ute G. Gangkofner, Pushkar S. Pradhan,
@@ -37,58 +45,6 @@
 #%  description: Fuses a High-Resolution Panchromatic with its corresponding Low Resolution Multi-Spectral image based on the High-Pass Filter Addition technique
 #%  keywords: imagery, fusion, HPF, HPFA
 #%End
-#%option
-#% key: ratio
-#% type: double
-#% description: Custom defined ratio to override standard calculation 
-#% options: 1-10
-#% guisection: High Pass Filter
-#% required: no
-#%end
-#%option
-#% key: center
-#% type: string
-#% description: Center cell value of the High-Pass-Filter 
-#% descriptions: low;Low center cell value;mid;Mid center value;high;High center value
-#% options: low,mid,high
-#% required: yes
-#% answer: low
-#% guisection: High Pass Filter
-#% multiple : no
-#%end
-#%option
-#% key: center2
-#% type: string
-#% description: Center cell value for the second pass of the High-Pass-Filter 
-#% descriptions: low;Low center cell value;mid;Mid center value;high;High center value
-#% options: low,mid,high
-#% required: no
-#% answer: low
-#% guisection: High Pass Filter
-#% multiple : no
-#%end
-#%option
-#% key: modulator
-#% type: string
-#% description: Level of modulating factor weighting the HPF image to determine crispness
-#% descriptions: mid;Mid modulating factor;min;Minimum modulating factor;max;Maximum modulating factor;
-#% options: min,mid,max
-#% required: yes
-#% answer: mid
-#% guisection: High Pass Filter
-#% multiple : no
-#%end
-#%option
-#% key: modulator2
-#% type: string
-#% description: Level of modulating factor weighting the HPF image in the second pass to determine crispness
-#% descriptions: mid;Mid modulating factor (0.35) for the 2nd pass;min;Minimum modulating factor (0.25) for the 2nd pass;max;Maximum modulating factor (0.5) for 2nd pass;
-#% options: min,mid,max
-#% required: no
-#% answer: mid
-#% guisection: High Pass Filter
-#% multiple : no
-#%end
 #%flag
 #%  key: l
 #%  description: Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)
@@ -101,14 +57,14 @@
 #% key: pan
 #% type: string
 #% gisprompt: old,double,raster
-#% description: High resolution Panchromatic image
+#% description: High resolution panchromatic image
 #% required : yes
 #%end
 #%option
 #% key: msx
 #% type: string
 #% gisprompt: old,double,raster
-#% description: Multi-Spectral image(s)
+#% description: Low resolution multi-spectral image(s)
 #% required: yes
 #% multiple: yes
 #%end
@@ -119,6 +75,58 @@
 #% description: Prefix for the Pan-Sharpened Multi-Spectral image(s)
 #% required: yes
 #% answer: hpf
+#%end
+#%option
+#% key: ratio
+#% type: double
+#% description: Custom defined ratio to override standard calculation 
+#% options: 1-10
+#% guisection: High Pass Filter Options
+#% required: no
+#%end
+#%option
+#% key: center
+#% type: string
+#% description: Center cell value of the High-Pass-Filter 
+#% descriptions: low;Low center cell value;mid;Mid center value;high;High center value
+#% options: low,mid,high
+#% required: no
+#% answer: low
+#% guisection: High Pass Filter Options
+#% multiple : no
+#%end
+#%option
+#% key: center2
+#% type: string
+#% description: Center cell value for the second pass of the High-Pass-Filter 
+#% descriptions: low;Low center cell value;mid;Mid center value;high;High center value
+#% options: low,mid,high
+#% required: no
+#% answer: low
+#% guisection: High Pass Filter Options
+#% multiple : no
+#%end
+#%option
+#% key: modulator
+#% type: string
+#% description: Level of modulating factor weighting the HPF image to determine crispness
+#% descriptions: mid;Mid modulating factor;min;Minimum modulating factor;max;Maximum modulating factor;
+#% options: min,mid,max
+#% required: no
+#% answer: mid
+#% guisection: High Pass Filter Options
+#% multiple : no
+#%end
+#%option
+#% key: modulator2
+#% type: string
+#% description: Level of modulating factor weighting the HPF image in the second pass to determine crispness
+#% descriptions: mid;Mid modulating factor (0.35) for the 2nd pass;min;Minimum modulating factor (0.25) for the 2nd pass;max;Maximum modulating factor (0.5) for 2nd pass;
+#% options: min,mid,max
+#% required: no
+#% answer: mid
+#% guisection: High Pass Filter Options
+#% multiple : no
 #%end
 
 # Various checks -------------------------------------------------------------
@@ -881,9 +889,11 @@ g.message -v "5 Linearly matching histogram of the >${GIS_OPT_PAN}< to the >${MS
 # if [ $GIS_FLAG_L -eq 0 ]
   #   then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX}
   #   else g.message -i "Matching histograms..." # linear hisogram matching to adapt output StdDev and Mean to the input-ted ones
-  #   # r.mapcalc
+  
   #   # input=${Temporary_MSHPF} \
   #   # output=${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX} \
+
+#   r.mapcalc "MSHPF_Histomatched = ( $Temporary_MSHPF - $MSHPF_Mean ) / $MSHPF_StdDev * $Reference_StdDev + $Reference_Mean" --o
 # fi
 
 # g.message -i " "
