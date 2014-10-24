@@ -27,16 +27,16 @@ Algorithm description
 5.  Optionally, matching histogram of Pansharpened image to the one of the 
 original MSX image
 
-How to use
-==========
+Installation
+============
 
 Requirements
 ------------
 
 see [GRASS Addons SVN repository, README file, Installation - Code Compilation](https://svn.osgeo.org/grass/grass-addons/README)
 
-Installation
-------------
+Installation steps
+------------------
 
 Making the script `i.fusion.hpf` available from within any GRASS-GIS ver. 6.4 session, may be done via the following steps:
 
@@ -46,6 +46,62 @@ Making the script `i.fusion.hpf` available from within any GRASS-GIS ver. 6.4 se
 
 3.  execute `make MODULE_TOPDIR=$GISBASE`
 
+Usage
+=====
+
+After installation, from within a GRASS-GIS session, see help details via `i.fusion.hpf --help` -- also provided here:
+
+```
+Description:
+ Fuses a High-Resolution Panchromatic with its corresponding Low Resolution Multi-Spectral image based on the High-Pass Filter Addition technique
+
+Keywords:
+ imagery, fusion, HPF, HPFA
+
+Usage:
+ i.fusion.hpf [-l2] pan=string msx=string[,string,...]
+   outputprefix=string [ratio=value] [center=string] [center2=string]
+   [modulator=string] [modulator2=string] [--verbose] [--quiet]
+
+Flags:
+  -l   Linearly match histograms of the HPF Pan-sharpened output(s) to the Multi-Spectral input(s)
+  -2   2-Pass Processing (recommended) for large Resolution Ratio (>=5.5)
+ --v   Verbose module output
+ --q   Quiet module output
+
+Parameters:
+           pan   High resolution panchromatic image
+           msx   Low resolution multi-spectral image(s)
+  outputprefix   Prefix for the Pan-Sharpened Multi-Spectral image(s)
+                 default: hpf
+         ratio   Custom defined ratio to override standard calculation
+                 options: 1-10
+        center   Center cell value of the High-Pass-Filter
+                 options: low,mid,high
+                 default: low
+                  low: Low center cell value
+                  mid: Mid center value
+                  high: High center value
+       center2   Center cell value for the second pass of the High-Pass-Filter
+                 options: low,mid,high
+                 default: low
+                  low: Low center cell value
+                  mid: Mid center value
+                  high: High center value
+     modulator   Level of modulating factor weighting the HPF image to determine crispness
+                 options: min,mid,max
+                 default: mid
+                  min: Minimum modulating factor
+                  mid: Mid modulating factor
+                  max: Maximum modulating factor
+    modulator2   Level of modulating factor weighting the HPF image in the second pass to determine crispness
+                 options: min,mid,max
+                 default: mid
+                  min: Minimum modulating factor (0.25) for the 2nd pass
+                  mid: Mid modulating factor (0.35) for the 2nd pass
+                  max: Maximum modulating factor (0.5) for 2nd pass
+```
+  
 Implementation
 ==============
 
