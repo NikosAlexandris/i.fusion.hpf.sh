@@ -27,6 +27,25 @@ Algorithm description
 5.  Optionally, matching histogram of Pansharpened image to the one of the 
 original MSX image
 
+How to use
+==========
+
+Requirements
+------------
+
+see [GRASS Addons SVN repository, README file, Installation - Code Compilation](https://svn.osgeo.org/grass/grass-addons/README)
+
+Installation
+------------
+
+Making the script `i.fusion.hpf` available from within any GRASS-GIS ver. 6.4 session, may be done via the following steps:
+
+1.  launch a GRASS-GIS’ ver. 6.4 session
+
+2.  navigate into the script’s source directory
+
+3.  execute `make MODULE_TOPDIR=$GISBASE`
+
 Implementation
 ==============
 
