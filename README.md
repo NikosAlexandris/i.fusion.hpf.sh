@@ -93,6 +93,8 @@ publication)~~ *Does it work properly?*
 
 6. what about [Why should eval be avoided in Bash, and what should I use instead?](http://stackoverflow.com/q/17529220/1172302)
 
+7. identically named pan-sharpened images won't be overwritten -- advice to use `--o Allow output files to overwrite existing files`  <- needs to be shown while `i.fusion.hpf --help`!
+
 Questions
 ---------
 
