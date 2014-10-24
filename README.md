@@ -63,11 +63,14 @@ Remarks
 -------
 
 -   currently requires manual color rebalancing (e.g. by using i.landsat.rgb)
+
 -   easy to use, i.e.:
  * for one band `i.fusion.hpf pan=Panchromatic msx=${Band}`
  * for multiple bands `i.fusion.hpf pan=Panchromatic msx=Red,Green,Blue,NIR`
+
 -   easy to test various parameters that define the High-Pass filter’s *kernel 
 size* and *center value*
+
 -   should work with **any** kind of imagery (think of bitness)
 
 To Do
@@ -85,6 +88,10 @@ publication)~~ *Does it work properly?*
 
 4.  ~~works only for integers – with minor tweaking it can work with
 `r.mfilter.fp` to crunch Floating Points as well~~
+
+5. consider [Have backticks (i.e. `cmd`) in *sh shells been deprecated?](http://unix.stackexchange.com/q/126927/13011)
+
+6. what about [Why should eval be avoided in Bash, and what should I use instead?](http://stackoverflow.com/q/17529220/1172302)
 
 Questions
 ---------
