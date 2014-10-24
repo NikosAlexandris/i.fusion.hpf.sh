@@ -730,7 +730,7 @@ function hpf_matrix {
 
 
   # apply filter (for G64 -- for G7 use r.mfilter?)
-  r.mfilter --o --q \
+  r.mfilter.fp --o --q \
   input="$GIS_OPT_PAN" \
   filter="$Temporary_ASCII_HPF_Matrix_File" \
   output="$Temporary_HPF" \
@@ -750,7 +750,7 @@ function hpf_matrix {
 	  exit 1
 	fi
 	
-	r.mfilter --o \
+	r.mfilter.fp --o \
 	input="$Temporary_HPF" \
 	filter="$Temporary_ASCII_HPF_Matrix_File_2" \
 	output="$Temporary_HPF_2" \
