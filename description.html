@@ -8,8 +8,52 @@ The process involves a convolution using a High Pass Filter (HPF) on the high
 resolution data, then combining this with the lower resolution multispectral
 data. Read the description of the Algorithm below.
 
+Optionally, a linear histogram matching technique is performed in a way that 
+matches the resulting Pan-Sharpened image to the statistical mean and standard 
+deviation of the original multi-spectral image.
+
+Source: Gangkofner, 2008
+
+
+Algorithm description
+=====================
+
+1.  Computing ratio of low (Multi-Spectral) to high (Panchromatic) resolutions
+
+2.  High Pass Filtering the Panchromatic Image
+
+3.  Resampling MSx image to the higher resolution
+
+4.  Adding weighted High-Pass-Filtered image (HPFi) to the upsampled MSx image
+
+5.  Optionally, matching histogram of Pansharpened image to the one of the 
+original MSx image
+
+
+From the original paper
+-----------------------
+
+Step 1: HP Filtering of the High-resolution Image to Extract the Structural
+Detail
+
+Step 2: Adding the HP Filtered Image to Each Band of the Multispectral Image
+Using a Standard Deviation-based Injection Model
+
+Step 3: Linear Histogram Match to Adapt SD and Mean of the Merged Image Bands
+to Those of the Original MS Image Bands
+
 <pre>
-    Some formula +++
+ Figure 1:
+ ____________________________________________________________________________
++                                                                            +
+| Pan Img ->  High Pass Filter  ->  HP Img                                   |
+|                                      |                                     |
+|                                      v                                     |
+| MSx Img ->  Weighting Factors ->  Weighted HP Img                          |
+|       |                              |                                     |
+|       |                              v                                     |
+|       +------------------------>  Addition to MSx Img  =>  Fused MSx Image |
+|____________________________________________________________________________+
 </pre>
 
 The algorithm's steps are:
@@ -30,7 +74,7 @@ The algorithm's steps are:
 
 
 <h2>NOTES</h2>
-The command changes temporarily to the high resolution of the panchromatic
+[ToDo!] The command changes temporarily to the high resolution of the panchromatic
 image for creating the sharpened image, then restores the previous region
 settings. The current region coordinates are respected. Pan-sharpened images
 may be combined with <em>d.rgb</em> or <em>r.composite</em>.
@@ -43,19 +87,19 @@ HPFA-based fusion of satellite imagery... :
   *** Fix Below ***
 
 <div class="code"><pre>
-g.region rast= -p
 
-# R, G, B composite at 28.5m 
-d.rgb b=lsat7_2002_10 g=lsat7_2002_20 r=lsat7_2002_30
+# R, G, B composite at...
+...
 
-# Brovey fusion
-i.fusion.brovey -l ms1=lsat7_2002_20 ms2=lsat7_2002_40 \
-                   ms3=lsat7_2002_50 pan=lsat7_2002_80 \
-                   outputprefix=brovey
+# HPFA Fusion
+i.fusion.hpf.py --o --v -l -2 ratio=7\
+                pan=12DEC02053035.pan \
+                msx=12DEC02053035.blue,12DEC02053035.nir \
+                center2=mid modulation2=min 
 
-# display at 14.25m
-g.region rast=brovey.blue -p
-d.rgb b=brovey.blue g=brovey.green r=brovey.red
+
+# display at ...
+...
 </pre></div>
 
 
@@ -86,9 +130,6 @@ Results:
 <br>
 
 
-Colors may be optionally optimized.
-
-
 <h2>SEE ALSO</h2>
 
 <em>
@@ -104,27 +145,16 @@ Colors may be optionally optimized.
 <h2>REFERENCES</h2>
 
 <ul>
-<li>Original Brovey formula reference unknown, probably <br>
-   Roller, N.E.G. and Cox, S., 1980. Comparison of Landsat MSS
-   and merged MSS/RBV data for analysis of natural vegetation.
-   Proc. of the 14th International Symposium on Remote Sensing
-   of Environment, San Jose, Costa Rica, 23-30 April, pp. 1001-1007
+<li>...
 
-<li>Pohl, C., and J.L. van Genderen, 1998. 
-    Multisensor image fusion in remote sensing: concepts, methods and
-    application. Int. J. of Rem. Sens., 19, 823-854.
+<li>...
 
-<li>M. Neteler, D. Grasso, I. Michelazzi, L. Miori, S. Merler, and C.
-   Furlanello, 2005.
-   An integrated toolbox for image registration, fusion and classification.
-   International Journal of Geoinformatics, 1(1):51-61
-   (<a href="http://www.grassbook.org/neteler/papers/neteler2005_IJG_051-061_draft.pdf">PDF</a>)
+<li>...
 </ul>
 
 
 <h2>AUTHOR</h2>
 
 Nikos Alexandris, Remote Sensing Analyst, Greece
-Nikos Ves, , Greece
 <p>
-<i>Last changed: $Date: 2011-11-08 11:42:51 +0200 (Tue, 08 Nov 2011) $</i>
+<i>Last changed: $Date: 2014-11-07 05:03:44 +0200 (Fri, 07 Nov 2014) $</i>

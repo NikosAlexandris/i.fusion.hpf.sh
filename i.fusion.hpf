@@ -455,7 +455,7 @@ fi
 	g.message -v "1 Computing ratio of low (${MSX_RESOLUTION}) to high resolution (${PAN_RESOLUTION}): $(printf "%0.1f\n" $RATIO)"
 
 
-# 2nd pass requested but Ration < 5.5
+# 2nd pass requested but Ratio < 5.5
 if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "$RATIO < 5.5" | bc ) -eq 1 ]]
   then g.message -i " * Ratio < 5.5 -- wont apply a 2nd pass!"
 fi
@@ -754,7 +754,7 @@ function hpf_matrix {
 	input="$Temporary_HPF" \
 	filter="$Temporary_ASCII_HPF_Matrix_File_2" \
 	output="$Temporary_HPF_2" \
-	title="2-High-Pass Filtered Panchromatic Image"
+	title="2x High-Pass Filtered Panchromatic Image"
 
   fi
 
@@ -866,6 +866,7 @@ function hpf_matrix {
 	fi
 	
 	g.copy --q rast=$Temporary_MSHPF,${GIS_OPT_OUTPUTPREFIX}_${MSX}
+	### This line should come after the following r.support actions !?
 	
 
   # write cmd history
@@ -888,7 +889,7 @@ g.message -v "5 Linearly matching histogram of the >${GIS_OPT_PAN}< to the >${MS
 
 # if [ $GIS_FLAG_L -eq 0 ]
   #   then g.rename rast=${Temporary_MSHPF},${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX}
-  #   else g.message -i "Matching histograms..." # linear hisogram matching to adapt output StdDev and Mean to the input-ted ones
+  #   else g.message -i "Matching histograms..." # linear histogram matching to adapt output StdDev and Mean to the input-ted ones
   
   #   # input=${Temporary_MSHPF} \
   #   # output=${GIS_OPT_MSX}_${GIS_OPT_OUTPUTPREFIX} \

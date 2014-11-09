@@ -73,9 +73,9 @@ size* and *center value*
 To Do
 -----
 
-1. convert to Python script
+1. ~~convert to Python script~~
 
-2. integrate in `i.pansharpen`?  
+2. integrate in `i.pansharpen`? Checking options...
 
 2. ~~automatic looping over multiple Multi-Spectral images so as to render 
 needless the task for manual loops~~
@@ -93,7 +93,6 @@ Questions
 It performs histogram matching using the Standard Deviation and Mean of the 
 reference image.
 
--   Integrate in `i.pansharpen`?
 
 References
 ==========
