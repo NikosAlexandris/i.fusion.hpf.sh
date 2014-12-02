@@ -10,28 +10,28 @@
 # MODULE:       i.fusion.hpf
 #
 # AUTHOR(S):    Nikos Alexandris <nik@nikosalexandris.net>
-#				Nikos Ves <vesnikos@gmail.com>
+#		Nikos Ves <vesnikos@gmail.com>
 #
-# PURPOSE:		HPF Resolution Merge -- Algorithm Replication in GRASS GIS
+# PURPOSE:	HPF Resolution Merge -- Algorithm Replication in GRASS GIS
 #
-# 				Module to combine high-resolution panchromatic data with
-# 				lower resolution multispectral data, resulting in an output
-# 				with both excellent detail and a realistic representation of
-# 				original multispectral scene colors.
+# 		Module to combine high-resolution panchromatic data with
+# 		lower resolution multispectral data, resulting in an output
+# 		with both excellent detail and a realistic representation of
+# 		original multispectral scene colors.
 #
-# 				The process involves a convolution using a High Pass Filter
-# 				(HPF) on the high resolution data, then combining this with
-# 				the lower resolution multispectral data.
+#		The process involves a convolution using a High Pass Filter
+#		(HPF) on the high resolution data, then combining this with
+#		the lower resolution multispectral data.
 #
-#				Optionally, a linear histogram matching technique is performed
-#				in a  way that matches the resulting Pan-Sharpened imaged to
-#				them statistical mean and standard deviation of the original
-#				multi-spectral image. Credits for how to implement this
-#				technique go to	GRASS-GIS developer Moritz Lennert.
+#		Optionally, a linear histogram matching technique is performed
+#		in a  way that matches the resulting Pan-Sharpened imaged to
+#		them statistical mean and standard deviation of the original
+#		multi-spectral image. Credits for how to implement this
+#		technique go to	GRASS-GIS developer Moritz Lennert.
 #
-# 				Source: "Optimizing the High-Pass Filter Addition Technique for
-# 				Image Fusion", Ute G. Gangkofner, Pushkar S. Pradhan,
-# 				and Derrold W. Holcomb (2008)
+#		Source: "Optimizing the High-Pass Filter Addition Technique
+# 		for Image Fusion", Ute G. Gangkofner, Pushkar S. Pradhan,
+# 		and Derrold W. Holcomb (2008)
 #
 # COPYRIGHT:    (C) 2013 by the GRASS Development Team
 #
@@ -741,7 +741,7 @@ function hpf_matrix {
 # r.support "$GIS_OPT_" history="${CMDLINE}"
 # r.support "$GIS_OPT_" history="${CMDLINE}"
 
-  # apply a second pass
+  # apply a second pass (use again the original Pan!)
   if [ $GIS_FLAG_2 -eq 1 ] && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
 
 	then Temporary_HPF_2="i.fusion.hpf.tmp.HPF.2" # I don't understand g.tempfile!
@@ -751,7 +751,7 @@ function hpf_matrix {
 	fi
 	
 	r.mfilter.fp --o \
-	input="$Temporary_HPF" \
+	input="$GIS_OPT_PAN" \
 	filter="$Temporary_ASCII_HPF_Matrix_File_2" \
 	output="$Temporary_HPF_2" \
 	title="2x High-Pass Filtered Panchromatic Image"
@@ -858,7 +858,7 @@ function hpf_matrix {
   
 	# check if 2nd pass applies
 	if [ $GIS_FLAG_2 -eq 1 ]  && [[ $( echo "5.5 < $RATIO" | bc ) -eq 1 ]]
-	  then	g.message -i "Adding a 2nd pass weighted HPF image to the upsampled image"
+	  then	g.message -i "Adding back a 2nd pass weighted HPF image to the upsampled image"
 
 		r.mapcalc "$Temporary_MSHPF = $Temporary_MSHPF + ( $Temporary_HPF_2 * double($Weighting_2) )"
 		g.message -v "2nd pass performed successfuly!"
